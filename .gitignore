@@ -1,0 +1,14 @@
+# Jupyter notebook stuff
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+ 
+# Python cache
+__pycache__
+*/__pycache__/*
+
+# Compiled python object files
+*.pyc
+
+# IPython
+profile_default/
+ipython_config.py
