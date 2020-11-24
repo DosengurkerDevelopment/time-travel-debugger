@@ -1,10 +1,5 @@
-class TimeTravelDebugger(Tracer):
+from debuggingbook import Debugger
 
-    def __init__(self):
-        pass
 
-    def __enter__(self):
-        pass
-
-    def __exit__(self, *args, **kwargs):
-        pass
+class TimeTravelDebugger(Debugger):
+    pass
