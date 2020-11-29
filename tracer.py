@@ -1,22 +1,19 @@
 import inspect
-import math
 import sys
 
+
 class Tracer(object):
+
     def __init__(self, file=sys.stdout):
         """Trace a block of code, sending logs to file (default: stdout)"""
         self.original_trace_function = None
         self.file = file
-        pass
+        self.last_vars = {}
 
     def log(self, *objects, sep=' ', end='\n', flush=False):
         """Like print(), but always sending to file given at initialization,
            and always flushing"""
         print(*objects, sep=sep, end=end, file=self.file, flush=True)
-
-    def traceit(self, frame, event, arg):
-        """Tracing function. To be overridden in subclasses."""
-        self.log(event, frame.f_lineno, frame.f_code.co_name, frame.f_locals)
 
     def _traceit(self, frame, event, arg):
         """Internal tracing function."""
@@ -68,22 +65,6 @@ class Tracer(object):
         self.last_vars = new_vars.copy()
         return changed
 
-
-class Tracer(Tracer):
-    def traceit(self, frame, event, arg):
-        if event == 'line':
-            module = inspect.getmodule(frame.f_code)
-            if module is None:
-                source = inspect.getsource(frame.f_code)
-            else:
-                source = inspect.getsource(module)
-            current_line = source.split('\n')[frame.f_lineno - 1]
-            self.log(frame.f_lineno, current_line)
-
-        return traceit
-
-
-class Tracer(Tracer):
     def traceit(self, frame, event, arg):
         if event == 'call':
             self.log(f"Calling {frame.f_code.co_name}()")
@@ -97,14 +78,7 @@ class Tracer(Tracer):
         if event == 'return':
             self.log(f"{frame.f_code.co_name}() returns {repr(arg)}")
 
-        return traceit
-
-
-class Tracer(Tracer):
-    def __init__(self, file=sys.stdout):
-        self.last_vars = {}
-        super().__init__(file=file)
-
+        return self.traceit
 
 
 class ConditionalTracer(Tracer):
