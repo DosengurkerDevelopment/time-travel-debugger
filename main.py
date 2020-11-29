@@ -1,4 +1,4 @@
-import TimeTravelDebugger
+from timeTravelDebugger import TimeTravelDebugger
 
 if __name__ == '__main__':
     with TimeTravelDebugger():
