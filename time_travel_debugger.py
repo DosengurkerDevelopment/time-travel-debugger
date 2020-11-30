@@ -11,14 +11,14 @@ class TimeTravelDebugger(Debugger):
 
         super().__init__(file)
 
-    def __traceit__(self, frame, event, arg):
+    def _traceit(self, frame, event, arg):
         if self.code is None:
             self.code = frame.f_code
         self.traceit(frame, event, arg)
-        return self.__traceit__
+        return self._traceit
 
     def __enter__(self, *args, **kwargs):
-        sys.settrace(self.__traceit__)
+        sys.settrace(self._traceit)
         return self
 
     def __exit__(self, *args, **kwargs):
