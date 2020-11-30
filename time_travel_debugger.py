@@ -7,12 +7,11 @@ class TimeTravelDebugger(Debugger):
 
     def __init__(self, file=sys.stdout):
         #  stores the respective line number and variable changes for each exection step
-        self.diffs = [] 
+        self.diffs = []
         self.curr_line = None
         self.exec_point = 0
         self.vars = {}
         self.code = None
-        self.last_state = None
         self.running = False
 
         super().__init__(file)
@@ -38,15 +37,14 @@ class TimeTravelDebugger(Debugger):
     def debugging_loop(self):
         while self.exec_point < len(self.diffs):
             #  the diff of the current execution point
-            (line,args) = self.diffs[self.exec_point] 
+            (line, args) = self.diffs[self.exec_point]
             self.curr_line = line
             #  assemble the vars of the current state of the program
             if self.stop_here():
                 #  self.exec_point = self.interaction_loop()
-                # get a command 
+                # get a command
                 command = input("(debugger) ")
                 self.execute(command)
-
 
     def __enter__(self, *args, **kwargs):
         sys.settrace(self._traceit)
@@ -56,7 +54,7 @@ class TimeTravelDebugger(Debugger):
         sys.settrace(None)
         self.debugging_loop()
         #  for diff in self.diffs:
-            #  print(diff)
+        #  print(diff)
 
     def traceit(self, frame, event, arg):
         # store the state of the previous execution point
@@ -64,18 +62,20 @@ class TimeTravelDebugger(Debugger):
         # compute diff
         diff = self.changed_vars(frame.f_locals)
         # only store previous values, that got changed by the current step
-        prev = {x:y for x, y in prev if x in diff}
-        self.diffs.append((frame.f_lineno, (prev,diff)))
+        prev = {x: y for x, y in prev if x in diff}
+        self.diffs.append((frame.f_lineno, (prev, diff)))
         return self.traceit
 
-
     def print_command(self, arg=""):
+        print(self.diffs[self.exec_point])
         """Print an expression. If no expression is given, print all variables"""
+        vars = self.vars
+
         if not arg:
-            self.log("\n".join([f"{var} = {repr(self.vars[var])}" for var in self.vars]))
+            self.log("\n".join([f"{var} = {repr(vars[var])}" for var in vars]))
         else:
             try:
-                self.log(f"{arg} = {repr(eval(arg, globals(), self.vars))}")
+                self.log(f"{arg} = {repr(eval(arg, globals(), vars))}")
             except Exception as err:
                 self.log(f"{err.__class__.__name__}: {err}")
 
@@ -90,13 +90,13 @@ class TimeTravelDebugger(Debugger):
 
     def step_forward(self):
         self.exec_point += 1
-        (new_line, (var_old,var_diff)) = self.diffs[self.exec_point]
+        (new_line, (var_old, var_diff)) = self.diffs[self.exec_point]
         self.vars.update(var_diff)
         self.curr_line = new_line
 
     def step_backward(self):
         self.exec_point -= 1
-        (new_line, (var_old,var_diff)) = self.diffs[self.exec_point]
+        (new_line, (var_old, var_diff)) = self.diffs[self.exec_point]
         # filter out variables, that did not exist in the scope from the previous
         # execution point
         #  pdb.set_trace()
@@ -115,15 +115,3 @@ class TimeTravelDebugger(Debugger):
         self.step_backward()
         self.stepping = True
 
-    def print_command(self, arg=""):
-        print(self.diffs[self.exec_point])
-        """Print an expression. If no expression is given, print all variables"""
-        vars = self.vars
-
-        if not arg:
-            self.log("\n".join([f"{var} = {repr(vars[var])}" for var in vars]))
-        else:
-            try:
-                self.log(f"{arg} = {repr(eval(arg, globals(), vars))}")
-            except Exception as err:
-                self.log(f"{err.__class__.__name__}: {err}")
