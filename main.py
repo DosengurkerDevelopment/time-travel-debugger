@@ -4,17 +4,25 @@ from debugger import Debugger
 from time_travel_debugger import TimeTravelDebugger
 
 
-def blub():
-    a = 5
-    b = 6
-    c = 1
-    while b > 0:
-        c *= a
-        b -= 1
+def remove_html_markup(s):
+    tag = False
+    quote = False
+    out = ""
 
-    print(c)
+    for c in s:
+        if c == '<' and not quote:
+            tag = True
+        elif c == '>' and not quote:
+            tag = False
+        elif c == '"' or c == "'" and tag:
+            quote = not quote
+        elif not tag:
+            out = out + c
+
+    return out
 
 
 if __name__ == '__main__':
     with TimeTravelDebugger():
-        blub()
+        wo_html = remove_html_markup("<a='insert <name> here'>this is a name holder</a>")
+        print(wo_html)

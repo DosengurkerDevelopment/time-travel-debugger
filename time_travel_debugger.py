@@ -5,17 +5,38 @@ from debugger import Debugger
 class TimeTravelDebugger(Debugger):
 
     def __init__(self, file=sys.stdout):
-        self.snaps = []
+        self.diffs = []
+        self.code = None
+        self.last_state = None
 
         super().__init__(file)
 
-    def traceit(self, frame, event, arg):
-        """Tracing function; called at every line"""
-        self.frame = frame
-        self.event = event
-        self.arg = arg
+    def __traceit__(self, frame, event, arg):
+        if self.code is None:
+            self.code = frame.f_code
+        self.traceit(frame, event, arg)
+        return self.__traceit__
 
-        if self.stop_here():
-            self.interaction_loop()
+    def __enter__(self, *args, **kwargs):
+        sys.settrace(self.__traceit__)
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        self.code = None
+        sys.settrace(None)
+        for line, diff in self.diffs:
+            print(line, diff)
+
+    def diff(self, one, other):
+        diff = {}
+        for key, value in other.items():
+            if key not in one or value != one[key]:
+                diff[key] = value
+        return diff
+
+    def traceit(self, frame, event, arg):
+        # Calculate and store diffs of the current scope/frame
+        diff = self.changed_vars(frame.f_locals)
+        self.diffs.append((frame.f_lineno, diff))
 
         return self.traceit
