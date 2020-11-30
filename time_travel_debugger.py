@@ -89,21 +89,31 @@ class TimeTravelDebugger(Debugger):
             #  self.execute(command)
 
     def step_forward(self):
-        self.exec_point += 1
-        (new_line, (var_old,var_diff)) = self.diffs[self.exec_point]
-        self.vars.update(var_diff)
-        self.curr_line = new_line
+        # check wheter we reached the end of the program
+        if self.exec_point < len(self.diffs)-1:
+            self.exec_point += 1
+            (new_line, (var_old,var_diff)) = self.diffs[self.exec_point]
+            self.vars.update(var_diff)
+            self.curr_line = new_line
+            return True
+        else:
+            return False
 
     def step_backward(self):
-        (new_line, (var_old,var_diff)) = self.diffs[self.exec_point]
-        self.exec_point -= 1
-        # filter out variables, that did not exist in the scope from the previous
-        # execution point
-        #  pdb.set_trace()
-        for d in var_diff:
-            if d in self.vars and d not in var_old:
-                self.vars.pop(d)
-        self.curr_line = new_line
+        # check wheter we reached the start of the program
+        if self.exec_point > 0:
+            (new_line, (var_old,var_diff)) = self.diffs[self.exec_point]
+            self.exec_point -= 1
+            # filter out variables, that did not exist in the scope from the previous
+            # execution point
+            #  pdb.set_trace()
+            for d in var_diff:
+                if d in self.vars and d not in var_old:
+                    self.vars.pop(d)
+            self.curr_line = new_line
+            return True
+        else:
+            return False
 
     def step_command(self, arg=""):
         """Execute up to the next line"""
@@ -115,3 +125,16 @@ class TimeTravelDebugger(Debugger):
         self.step_backward()
         self.stepping = True
 
+    def next_command(self, arg=""):
+        """Execute up to the next line"""
+        next_line=self.curr_line + 1
+        while (self.curr_line  != next_line):
+            self.step_forward()
+        self.stepping = True
+
+    def previous_command(self, arg=""):
+        """Execute up to the next line"""
+        next_line=self.curr_line - 1
+        while (self.curr_line  != next_line):
+            self.step_backward()
+        self.stepping = True

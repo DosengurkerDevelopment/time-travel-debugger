@@ -3,6 +3,16 @@ from tracer import Tracer
 from debugger import Debugger
 from time_travel_debugger import TimeTravelDebugger
 
+def id(a):
+    b = 1234
+    c = 12
+    return a
+
+def call_id(a):
+    test = "test"
+    res = id(a)
+    print("stupid")
+    return res
 
 def remove_html_markup(s):
     tag = False
@@ -24,5 +34,7 @@ def remove_html_markup(s):
 
 if __name__ == '__main__':
     with TimeTravelDebugger():
-        wo_html = remove_html_markup("<a='insert <name> here'>this is a name holder</a>")
-        print(wo_html)
+        #  wo_html = remove_html_markup("<a='insert <name> here'>this is a name holder</a>")
+        #  print(wo_html)
+        a = call_id("test")
+        print(a)
