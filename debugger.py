@@ -45,7 +45,7 @@ class Debugger(Tracer):
 
     def interaction_loop(self):
         """Interact with the user"""
-        self.print_debugger_status(self.frame, self.event, self.arg)
+        #  self.print_debugger_status(self.frame, self.event, self.arg)
 
         self.interact = True
         while self.interact:
