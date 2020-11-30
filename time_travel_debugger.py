@@ -27,16 +27,8 @@ class TimeTravelDebugger(Debugger):
         for line, diff in self.diffs:
             print(line, diff)
 
-    def diff(self, one, other):
-        diff = {}
-        for key, value in other.items():
-            if key not in one or value != one[key]:
-                diff[key] = value
-        return diff
-
     def traceit(self, frame, event, arg):
         # Calculate and store diffs of the current scope/frame
         diff = self.changed_vars(frame.f_locals)
         self.diffs.append((frame.f_lineno, diff))
-
         return self.traceit
