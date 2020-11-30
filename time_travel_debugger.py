@@ -13,6 +13,8 @@ class TimeTravelDebugger(Debugger):
         self.vars = {}
         self.code = None
         self.running = False
+        self.at_start = True
+        self.at_end = False
 
         super().__init__(file)
 
@@ -95,8 +97,11 @@ class TimeTravelDebugger(Debugger):
             (new_line, (var_old,var_diff)) = self.diffs[self.exec_point]
             self.vars.update(var_diff)
             self.curr_line = new_line
+            self.at_start = False
             return True
         else:
+            self.at_start = False
+            self.at_end = True
             return False
 
     def step_backward(self):
@@ -111,8 +116,11 @@ class TimeTravelDebugger(Debugger):
                 if d in self.vars and d not in var_old:
                     self.vars.pop(d)
             self.curr_line = new_line
+            self.at_end = False
             return True
         else:
+            self.at_start = True
+            self.at_end = False
             return False
 
     def step_command(self, arg=""):
@@ -128,13 +136,13 @@ class TimeTravelDebugger(Debugger):
     def next_command(self, arg=""):
         """Execute up to the next line"""
         next_line=self.curr_line + 1
-        while (self.curr_line  != next_line):
+        while (self.curr_line != next_line and not self.at_end):
             self.step_forward()
         self.stepping = True
 
     def previous_command(self, arg=""):
         """Execute up to the next line"""
         next_line=self.curr_line - 1
-        while (self.curr_line  != next_line):
+        while (self.curr_line  != next_line and not self.at_start):
             self.step_backward()
         self.stepping = True
