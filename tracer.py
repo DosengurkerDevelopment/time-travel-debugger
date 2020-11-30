@@ -30,7 +30,7 @@ class Tracer(object):
         sys.settrace(self._traceit)
 
     def __exit__(self, tp, value, traceback):
-        """Called at begin of `with` block. Turn tracing off."""
+        """Called at end of `with` block. Turn tracing off."""
         sys.settrace(self.original_trace_function)
 
     def print_debugger_status(self, frame, event, arg):

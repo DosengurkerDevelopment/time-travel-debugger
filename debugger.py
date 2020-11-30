@@ -19,6 +19,15 @@ class Debugger(Tracer):
 
         super().__init__(file)
 
+    def _traceit(self, frame, event, arg):
+        """Internal tracing function."""
+        if frame.f_code.co_name == '__exit__':
+            # Do not trace our own __exit__() method
+            pass
+        else:
+            self.traceit(frame, event, arg)
+        return self._traceit
+
     def traceit(self, frame, event, arg):
         """Tracing function; called at every line"""
         self.frame = frame
@@ -54,10 +63,9 @@ class Debugger(Tracer):
         self.interact = False
 
     def commands(self):
-        cmds = [method.replace('_command', '')
-                for method in dir(self.__class__)
-                if method.endswith('_command')]
-        cmds.sort()
+        cmds = sorted([method.replace('_command', '')
+                       for method in dir(self.__class__)
+                       if method.endswith('_command')])
         return cmds
 
     def command_method(self, command):
