@@ -10,6 +10,9 @@ def id(a):
 
 def call_id(a):
     test = "test"
+    while a < 5:
+        a -= 1
+        test += "t"
     res = id(a)
     print("stupid")
     return res

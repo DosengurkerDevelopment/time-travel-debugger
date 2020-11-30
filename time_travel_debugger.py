@@ -69,7 +69,7 @@ class TimeTravelDebugger(Debugger):
         return self.traceit
 
     def print_command(self, arg=""):
-        print(self.diffs[self.exec_point])
+        print(f"{self.diffs[self.exec_point]} - {self.exec_point+1}/{len(self.diffs)}")
         """Print an expression. If no expression is given, print all variables"""
         vars = self.vars
 
@@ -124,24 +124,20 @@ class TimeTravelDebugger(Debugger):
             return False
 
     def step_command(self, arg=""):
-        """Execute up to the next line"""
         self.step_forward()
         self.stepping = True
 
     def backstep_command(self, arg=""):
-        """Execute up to the next line"""
         self.step_backward()
         self.stepping = True
 
     def next_command(self, arg=""):
-        """Execute up to the next line"""
         next_line=self.curr_line + 1
         while (self.curr_line != next_line and not self.at_end):
             self.step_forward()
         self.stepping = True
 
     def previous_command(self, arg=""):
-        """Execute up to the next line"""
         next_line=self.curr_line - 1
         while (self.curr_line  != next_line and not self.at_start):
             self.step_backward()
