@@ -89,14 +89,14 @@ class TimeTravelDebugger(Debugger):
             #  self.execute(command)
 
     def step_forward(self):
+        (new_line, (var_old,var_diff)) = self.diffs[self.exec_point]
         self.exec_point += 1
-        (new_line, (var_old, var_diff)) = self.diffs[self.exec_point]
         self.vars.update(var_diff)
         self.curr_line = new_line
 
     def step_backward(self):
+        (new_line, (var_old,var_diff)) = self.diffs[self.exec_point]
         self.exec_point -= 1
-        (new_line, (var_old, var_diff)) = self.diffs[self.exec_point]
         # filter out variables, that did not exist in the scope from the previous
         # execution point
         #  pdb.set_trace()
