@@ -113,7 +113,10 @@ class Debugger(Tracer):
 
         for cmd in possible_cmds:
             method = self.command_method(cmd)
-            self.log(f"{cmd:10} -- {method.__doc__}")
+            # Get rid of any unnecessary whitespace that may occur in a
+            # docstring (such as newline or tab)
+            doc = ' '.join(method.__doc__.strip().split())
+            self.log(f"{cmd:10} -- {doc}")
 
     def print_command(self, arg=""):
         """Print an expression. If no expression is given, print all variables"""
