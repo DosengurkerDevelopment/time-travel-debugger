@@ -38,7 +38,7 @@ class TimeTravelDebugger(Debugger):
         ''' Method to determine whether we need to stop at the current step
         Add all conditions here '''
         line = self.curr_line
-        if(self.stepping or line in self.breakpoints):
+        if self.stepping or line in self.breakpoints:
             # TODO: check condition of breakpoint
             # After stopping we want to be interactive again
             self.interact = True
@@ -50,8 +50,8 @@ class TimeTravelDebugger(Debugger):
         ''' Interaction loop that is run after the execution of the code inside
         the with block is finished '''
         while self.exec_point < len(self.diffs):
-            #  The diff of the current execution point
-            (line, args) = self.diffs[self.exec_point]
+            # The diff of the current execution point
+            line, args = self.diffs[self.exec_point]
             self.curr_line = line
             #  Assemble the vars of the current state of the program
             if self.stop_here():
@@ -63,7 +63,6 @@ class TimeTravelDebugger(Debugger):
         sys.settrace(self._traceit)
 
     def __exit__(self, *args, **kwargs):
-        self.code = None
         sys.settrace(None)
         self.debugging_loop()
 
@@ -74,11 +73,14 @@ class TimeTravelDebugger(Debugger):
         and the new value such that we can easily restore the state without
         having to backtrack to the beginning.
         '''
+
+        if frame.f_code.co_name not in self.code:
+            self.code[frame.f_code.co_name] = frame.f_code
         # Store the state of the previous execution point
         prev = self.last_vars.items()
         # Compute diff
         diff = self.changed_vars(frame.f_locals)
-        # Only store previous values, that got changed by the current step
+        # Only store previous values that got changed by the current step
         prev = {x: y for x, y in prev if x in diff}
         self.diffs.append((frame.f_lineno, (prev, diff)))
         return self.traceit
