@@ -105,3 +105,68 @@ class TimeTravelDebugger(Debugger):
                 spacer = '#'
             self.log(f'{line_number:4}{spacer} {line}', end='')
             line_number += 1
+
+
+    def finish_commmand(self):
+        ''' Finsh the current function execution '''
+        pass
+
+    def until_command(self, arg=""):
+        ''' Execute forward until a given point '''
+        pass
+
+    def backuntil_command(self, arg=""):
+        ''' Execute backward until a given point '''
+        pass
+
+    def continue_command(self, arg=""):
+        ''' Continue execution forward until a breakpoint is hit '''
+        pass
+
+    def reverse_command(self, arg=""):
+        ''' Continue execution backward until a breakpoint is hit '''
+        pass
+
+    def where_command(self, arg=""):
+        ''' Print the call stack '''
+        pass
+
+    def up_command(self):
+        ''' Move up the call stack '''
+        pass
+
+    def down_command(self):
+        ''' Move down the call stack '''
+        pass
+
+    def watch_command(self, arg=""):
+        ''' Insert a watchpoint '''
+        pass
+
+    def unwatch_command(self, arg=""):
+        ''' Remove a watchpoint '''
+        pass
+
+    def break_command(self, arg=""):
+        ''' Insert a breakpoint at the given location '''
+        pass
+
+    def breakpoints_command(self):
+        ''' List all breakpoints '''
+        pass
+
+    def delete_command(self, arg=""):
+        ''' Remove the given breakpoint '''
+        pass
+
+    def disable_commad(self, arg=""):
+        ''' Disable the given breakpoint '''
+        pass
+
+    def enable_command(self, arg=""):
+        ''' Enable the given breakpoint '''
+        pass
+
+    def cond_command(self, arg=""):
+        ''' Set a conditional breakpoint at the given location '''
+        pass
