@@ -2,6 +2,7 @@ import inspect
 import sys
 
 
+
 class Tracer(object):
 
     def __init__(self, file=sys.stdout):
@@ -111,3 +112,56 @@ class ConditionalTracer(Tracer):
 
         if report:
             self.print_debugger_status(frame, event, arg)
+
+
+
+
+class TimeTravelTracer(Tracer):
+
+    def __init__(self):
+        self._diffs = []
+        self._source_map = {}
+        self._last_vars = {}
+
+    def get_trace(self):
+        sys.settrace(None)
+        return self._diffs, self._source_map
+
+    def set_trace(self):
+        sys.settrace(self._traceit)
+
+    def _traceit(self, frame, event, arg):
+        ''' Internal tracing method '''
+        #  if self.code is None:
+            #  self.code = frame.f_code
+        if frame.f_code.co_name != '__exit__':
+            self.traceit(frame, event, arg)
+        return self._traceit
+
+    def traceit(self, frame, event, arg):
+        ''' Record the execution inside the with block.
+        We do not store the complete state for each execution point, instead
+        we calculate the difference and store a 'diff' which contains the old
+        and the new value such that we can easily restore the state without
+        having to backtrack to the beginning.
+        '''
+
+        if frame.f_code.co_name not in self._source_map:
+            self._source_map[frame.f_code.co_name] = frame.f_code
+        # Store the state of the previous execution point
+        prev = self._last_vars.items()
+        # Compute diff
+        diff = self.changed_vars(frame.f_locals)
+        # Only store previous values that got changed by the current step
+        prev = {x: y for x, y in prev if x in diff}
+        self._diffs.append((frame.f_lineno, (prev, diff)))
+        return self.traceit
+
+    def changed_vars(self, new_vars):
+        changed = {}
+        for var_name in new_vars:
+            if (var_name not in self._last_vars or
+                    self.last_vars[var_name] != new_vars[var_name]):
+                changed[var_name] = new_vars[var_name]
+        self.last_vars = new_vars.copy()
+        return changed
