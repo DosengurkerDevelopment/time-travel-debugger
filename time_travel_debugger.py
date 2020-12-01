@@ -1,5 +1,6 @@
 import inspect
 import sys
+import readline
 
 from debugger import Debugger
 
@@ -12,13 +13,13 @@ class TimeTravelDebugger(Debugger):
     def __init__(self, file=sys.stdout):
         # Stores the respective line number and variable changes for each
         # exection step
-        self.diffs = []
+        self.diffs = list()
         self.curr_line = None
 
         self.exec_point = 0
-        self.vars = {}
+        self.vars = dict()
 
-        self.code = None
+        self.code = dict()
         self.running = False
 
         self.at_start = True
@@ -84,6 +85,20 @@ class TimeTravelDebugger(Debugger):
         prev = {x: y for x, y in prev if x in diff}
         self.diffs.append((frame.f_lineno, (prev, diff)))
         return self.traceit
+
+    def command_method(self, command):
+        if command.startswith('#'):
+            return None  # Comment
+
+        possible_cmds = [possible_cmd for possible_cmd in self.commands()
+                         if possible_cmd.startswith(command)]
+        if len(possible_cmds) != 1 and command not in possible_cmds:
+            self.help_command(command)
+            return None
+
+        cmd = possible_cmds[0]
+
+        return getattr(self, cmd + '_command')
 
     def print_command(self, arg=""):
         ''' Print all variables or pass an expression to evaluate in the
@@ -182,3 +197,91 @@ class TimeTravelDebugger(Debugger):
                 spacer = '#'
             self.log(f'{line_number:4}{spacer} {line}', end='')
             line_number += 1
+
+    def help_command(self, command=""):
+        """Give help on given command. If no command is given, give help on all"""
+        if command:
+            possible_cmds = [possible_cmd for possible_cmd in self.commands()
+                             if possible_cmd.startswith(command)]
+
+            if len(possible_cmds) == 0:
+                self.log(
+                    f"Unknown command {repr(command)}. Possible commands are:")
+                possible_cmds = self.commands()
+            elif len(possible_cmds) > 1:
+                self.log(
+                    f"Ambiguous command {repr(command)}. Possible expansions are:")
+        else:
+            possible_cmds = self.commands()
+
+        for cmd in possible_cmds:
+            method = self.command_method(cmd)
+            # Get rid of any unnecessary whitespace that may occur in a
+            # docstring (such as newline or tab)
+            doc = ' '.join(method.__doc__.strip().split())
+            self.log(f"{cmd:15}-- {doc}")
+
+
+    def finish_commmand(self):
+        ''' Finsh the current function execution '''
+        pass
+
+    def until_command(self, arg=""):
+        ''' Execute forward until a given point '''
+        pass
+
+    def backuntil_command(self, arg=""):
+        ''' Execute backward until a given point '''
+        pass
+
+    def continue_command(self, arg=""):
+        ''' Continue execution forward until a breakpoint is hit '''
+        pass
+
+    def reverse_command(self, arg=""):
+        ''' Continue execution backward until a breakpoint is hit '''
+        pass
+
+    def where_command(self, arg=""):
+        ''' Print the call stack '''
+        pass
+
+    def up_command(self):
+        ''' Move up the call stack '''
+        pass
+
+    def down_command(self):
+        ''' Move down the call stack '''
+        pass
+
+    def watch_command(self, arg=""):
+        ''' Insert a watchpoint '''
+        pass
+
+    def unwatch_command(self, arg=""):
+        ''' Remove a watchpoint '''
+        pass
+
+    def break_command(self, arg=""):
+        ''' Insert a breakpoint at the given location '''
+        pass
+
+    def breakpoints_command(self):
+        ''' List all breakpoints '''
+        pass
+
+    def delete_command(self, arg=""):
+        ''' Remove the given breakpoint '''
+        pass
+
+    def disable_commad(self, arg=""):
+        ''' Disable the given breakpoint '''
+        pass
+
+    def enable_command(self, arg=""):
+        ''' Enable the given breakpoint '''
+        pass
+
+    def cond_command(self, arg=""):
+        ''' Set a conditional breakpoint at the given location '''
+        pass

@@ -96,7 +96,6 @@ class Debugger(Tracer):
 
     def help_command(self, command=""):
         """Give help on given command. If no command is given, give help on all"""
-
         if command:
             possible_cmds = [possible_cmd for possible_cmd in self.commands()
                              if possible_cmd.startswith(command)]
