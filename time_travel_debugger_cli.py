@@ -19,12 +19,15 @@ class TimeTravelDebugger(Debugger):
         super().__init__(file)
 
     def __enter__(self, *args, **kwargs):
+        print("start tracing")
         self._tracer.set_trace()
 
     def __exit__(self, *args, **kwargs):
+        print("stop tracing")
         diffs, source_map = self._tracer.get_trace()
-        debugger_context = DebuggerContext(diffs, source_map)
-        debugger_context.start(lambda: input("(debugger) "), self.execute)
+        print(diffs, source_map)
+        self._debugger_context = DebuggerContext(diffs, source_map)
+        self._debugger_context.start(lambda: input("(debugger) "), self.execute)
 
     def execute(self, command, current_state):
         self._current_state = current_state
@@ -46,7 +49,7 @@ class TimeTravelDebugger(Debugger):
         ''' Print all variables or pass an expression to evaluate in the
         current context '''
         # Shorthand such that the following code is not as lengthy
-        #  vars = self._current_state[-1]
+        vars = self._current_state.frames[-1]
 
         #  print(
             #  f"{self.diffs[self.exec_point]} - {self.exec_point+1}/{len(self.diffs)}")
@@ -61,17 +64,15 @@ class TimeTravelDebugger(Debugger):
 
     def step_command(self, arg=""):
         ''' Step to the next instruction '''
-        self.step_forward()
-        self.stepping = True
+        self._debugger_context.step_forward()
 
     def backstep_command(self, arg=""):
         ''' Step to the previous instruction '''
-        self.step_backward()
-        self.stepping = True
+        self._debugger_context.step_backward()
 
     def next_command(self, arg=""):
         ''' Step to the next source line '''
-        next_line = self.curr_line + 1
+        next_line = self._curr_line + 1
         while (self.curr_line != next_line and not self.at_end):
             self.step_forward()
         self.stepping = True

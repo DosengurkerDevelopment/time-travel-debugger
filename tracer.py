@@ -1,5 +1,7 @@
 import inspect
 import sys
+import inspect
+from exec_state_diff import ExecStateDiff
 
 
 
@@ -122,6 +124,8 @@ class TimeTravelTracer(Tracer):
         self._diffs = []
         self._source_map = {}
         self._last_vars = {}
+        self._last_frame = None
+        self._exec_state_diff = ExecStateDiff()
 
     def get_trace(self):
         sys.settrace(None)
@@ -134,7 +138,8 @@ class TimeTravelTracer(Tracer):
         ''' Internal tracing method '''
         #  if self.code is None:
             #  self.code = frame.f_code
-        if frame.f_code.co_name != '__exit__':
+        # don't trace __exit__ function and get_trace
+        if ( frame.f_code.co_name != '__exit__' )and( frame.f_code.co_name != 'get_trace' ):
             self.traceit(frame, event, arg)
         return self._traceit
 
@@ -146,15 +151,19 @@ class TimeTravelTracer(Tracer):
         having to backtrack to the beginning.
         '''
 
+        # collect the code in a source_map, so we can print it later in the debugger
         if frame.f_code.co_name not in self._source_map:
-            self._source_map[frame.f_code.co_name] = frame.f_code
-        # Store the state of the previous execution point
-        prev = self._last_vars.items()
-        # Compute diff
+            self._source_map[frame.f_code.co_name] = inspect.getsourcelines(frame.f_code)
         diff = self.changed_vars(frame.f_locals)
-        # Only store previous values that got changed by the current step
-        prev = {x: y for x, y in prev if x in diff}
-        self._diffs.append((frame.f_lineno, (prev, diff)))
+        print(diff)
+        # TODO: building exec_state_diff doesnt quite work yet!
+        if(frame.f_code.co_name != self._last_frame):
+            # new function, store in exec_state_diff accordingly
+            self._last_frame = frame.f_code.co_name
+            self._exec_state_diff.call(frame, diff)
+        else:
+            # Store the state of the previous execution point
+            self._exec_state_diff.update(frame,self._last_vars, diff)
         return self.traceit
 
     def changed_vars(self, new_vars):

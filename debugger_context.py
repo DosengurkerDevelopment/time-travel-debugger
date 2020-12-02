@@ -4,24 +4,30 @@ from exec_state_diff import ExecStateDiff
 # contains the absolute state of all defined variables of all currently active functions
 class CurrentState(object):
     def __init__(self):
-        self._states = []
+        self._frames = []
 
-    def update(diff:ExecStateDiff):
+    def update(self,diff:ExecStateDiff):
         depth = diff.depth
-        self._states[depth].update(diff.after)
+        self._frames[depth].update(diff.after)
 
-    def revert(diff:ExecStateDiff):
+    def revert(self,diff:ExecStateDiff):
         depth = diff.depth
-        if depth < len(self._states):
+        if depth < len(self._frames):
             # function return got called in diff, so go to the last functions state
-            self._states.pop()
+            self._frames.pop()
         else:
             # revert the addition and changes of variables in current function scope from
             # diff
             for d in diff.added:
-                    self._states[depth].pop(d.after)
+                    self._frames[depth].pop(d.after)
             for d in diff.updated:
-                self._states[depth].update(d.before)
+                self._frames[depth].update(d.before)
+
+    @property
+    def frames(self):
+        return self._frames
+
+
 
 
 class DebuggerContext(object):
@@ -46,31 +52,6 @@ class DebuggerContext(object):
 
         self._breakpoints = []
 
-    def step_forward(self):
-        ''' Step forward one instruction at a time '''
-        if self._exec_point < len(self._diffs) - 1:
-            self._exec_point += 1
-            diff = self._diffs[self._exec_point]
-            self._current_state.update(diff)
-            self._at_end = False
-        else:
-            self._at_end = True
-
-        self._at_start = False
-
-    def step_backward(self):
-        ''' Step backward one step at a time '''
-        # Check whether we reached the start of the program
-        if self._exec_point > 0:
-            diff = self._diffs[self._exec_point]
-            self._exec_point -= 1
-            self._current_state.revert(diff)
-            self._at_start = False
-        else:
-            self._at_start = True
-
-        self._at_end = False
-
     def stop_here(self):
         ''' Method to determine whether we need to stop at the current step
         Add all conditions here '''
@@ -83,7 +64,7 @@ class DebuggerContext(object):
             return False
 
 
-    def start(self, get_input, execute):
+    def start(self, get_command, exec_command):
         ''' Interaction loop that is run after the execution of the code inside
         the with block is finished '''
         while self._exec_point < len(self._exec_state_diffs):
@@ -93,5 +74,31 @@ class DebuggerContext(object):
             #  Assemble the vars of the current state of the program
             if self.stop_here():
                 # Get a command
-                command = get_input()
-                execute(command, self._current_state)
+                exec_command(get_command(), self._current_state)
+
+
+    def step_forward(self):
+        ''' Step forward one instruction at a time '''
+        if self._exec_point < len(self._exec_state_diffs) - 1:
+            self._exec_point += 1
+            diff = self._exec_state_diffs[self._exec_point]
+            print(diff)
+            self._current_state.update(diff)
+            self._at_end = False
+        else:
+            self._at_end = True
+
+        self._at_start = False
+
+    def step_backward(self):
+        ''' Step backward one step at a time '''
+        # Check whether we reached the start of the program
+        if self._exec_point > 0:
+            diff = self._exec_state_diffs[self._exec_point]
+            self._exec_point -= 1
+            self._current_state.revert(diff)
+            self._at_start = False
+        else:
+            self._at_start = True
+
+        self._at_end = False

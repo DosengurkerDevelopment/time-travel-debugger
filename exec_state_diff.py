@@ -10,8 +10,8 @@ class ExecStateDiff(object):
     def __init__(self):
         self._function_states = []
 
-    def call(self, frame):
-        self._function_states.append(FunctionStateDiff(frame, prev_vars, new_vars))
+    def call(self, frame, new_vars):
+        self._function_states.append(FunctionStateDiff(frame, new_vars))
 
     def update(self, frame, prev_vars, new_vars):
         self._function_states[-1].update(frame, prev_vars, new_vars)
@@ -46,18 +46,18 @@ class ExecStateDiff(object):
     # the number of nested function calls
     @property 
     def depth(self):
-        return self.len(self._function_states)
+        return len(self._function_states)
 
 class FunctionStateDiff(object):
 
-    def __init__(self, frame):
+    def __init__(self, frame, new_vars):
         # Hash of the frame this diff belongs to
         self._frame = hash(frame)
         # Line number of the diff
         self._lineno = frame.f_lineno
 
         # Variables that were added to the state in this step
-        self._added_vars = {}
+        self._added_vars = new_vars
         # Variables that were updated in this step
         self._updated_vars = {}
 
