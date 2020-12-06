@@ -69,7 +69,7 @@ class DebuggerContext(object):
         the with block is finished '''
         while self._exec_point < len(self._exec_state_diffs):
             # The diff of the current execution point
-            line, args = self._exec_state_diffs[self._exec_point]
+            diff = self._exec_state_diffs[self._exec_point]
             #  self.curr_line = line
             #  Assemble the vars of the current state of the program
             if self.stop_here():

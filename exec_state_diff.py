@@ -10,14 +10,23 @@ class ExecStateDiff(object):
     def __init__(self):
         self._function_states = []
 
-    def call(self, frame, new_vars):
-        self._function_states.append(FunctionStateDiff(frame, new_vars))
+    def call(self, frame):
+        self._function_states.append(FunctionStateDiff(frame))
+        return self
 
     def update(self, frame, prev_vars, new_vars):
         self._function_states[-1].update(frame, prev_vars, new_vars)
+        return self
 
     def ret(self, frame):
         self._function_states.pop()
+        return self
+
+    def __str__(self):
+        return f"{self._function_states}\n"
+
+    def __repr__(self):
+        return str(self)
 
     #  @property
     #  def frame(self):
@@ -48,27 +57,40 @@ class ExecStateDiff(object):
     def depth(self):
         return len(self._function_states)
 
+
 class FunctionStateDiff(object):
 
-    def __init__(self, frame, new_vars):
+    def __init__(self, frame):
         # Hash of the frame this diff belongs to
         self._frame = hash(frame)
         # Line number of the diff
         self._lineno = frame.f_lineno
 
         # Variables that were added to the state in this step
-        self._added_vars = new_vars
+        self._added_vars = frame.f_locals
         # Variables that were updated in this step
         self._updated_vars = {}
 
     def update (self, frame, prev_vars, new_vars):
         self._lineno = frame.f_lineno
         for key, value in new_vars.items():
+            #  print(f"prev:{prev_vars}, new:{new_vars}")
             if key in prev_vars:
-                update = VarUpdate(before=prev_vars[key], after=value)
-                self._updated_vars[key] = update
+                # only push change, if we really changed something
+                if value != prev_vars[key]:
+                    update = VarUpdate(before=prev_vars[key], after=value)
+                    #  if(update.before != update.after):
+                    self._updated_vars[key] = update
             else:
                 self._added_vars[key] = value
+
+
+    def __str__(self):
+        return f"<added:{self.added}, updated:{self.updated}>"
+
+    def __repr__(self):
+        return str(self)
+
 
     @property
     def frame(self):
