@@ -1,33 +1,35 @@
-from typing import List, Dict, Any
+from typing import List
 from exec_state_diff import ExecStateDiff
 
-# contains the absolute state of all defined variables of all currently active functions
+# Contains the absolute state of all defined variables of all currently active
+# functions
+
+
 class CurrentState(object):
     def __init__(self):
         self._frames = []
 
-    def update(self,diff:ExecStateDiff):
+    def update(self, diff: ExecStateDiff):
         depth = diff.depth
         self._frames[depth].update(diff.after)
 
-    def revert(self,diff:ExecStateDiff):
+    def revert(self, diff: ExecStateDiff):
         depth = diff.depth
         if depth < len(self._frames):
-            # function return got called in diff, so go to the last functions state
+            # function return got called in diff, so go to the last functions
+            # state
             self._frames.pop()
         else:
-            # revert the addition and changes of variables in current function scope from
-            # diff
+            # revert the addition and changes of variables in current function
+            # scope from diff
             for d in diff.added:
-                    self._frames[depth].pop(d.after)
+                self._frames[depth].pop(d.after)
             for d in diff.updated:
                 self._frames[depth].update(d.before)
 
     @property
     def frames(self):
         return self._frames
-
-
 
 
 class DebuggerContext(object):
@@ -55,14 +57,36 @@ class DebuggerContext(object):
     def stop_here(self):
         ''' Method to determine whether we need to stop at the current step
         Add all conditions here '''
+        line, _ = self._exec_state_diffs[self._exec_point]
         if self._stepping or line in self._breakpoints:
-            # TODO: check condition of breakpoint
             # After stopping we want to be interactive again
             self.interact = True
             return True
         else:
             return False
 
+    @property
+    def curr_line(self):
+        line, _ = self._exec_state_diffs[self._exec_point]
+        return line
+
+    @property
+    def breakpoints(self):
+        return self._breakpoints
+
+    @property
+    def at_start(self):
+        return self._at_start
+
+    @property
+    def at_end(self):
+        return self._at_end
+
+    def break_at_current(self):
+        return self.curr_line in self._breakpoints
+
+    def is_at_line(self, line):
+        return self.curr_line == line
 
     def start(self, get_command, exec_command):
         ''' Interaction loop that is run after the execution of the code inside
@@ -75,7 +99,6 @@ class DebuggerContext(object):
             if self.stop_here():
                 # Get a command
                 exec_command(get_command(), self._current_state)
-
 
     def step_forward(self):
         ''' Step forward one instruction at a time '''

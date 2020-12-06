@@ -5,6 +5,7 @@ import collections
 # named tuple for a variable change
 VarUpdate = collections.namedtuple('VarUpdate', 'before after')
 
+
 class ExecStateDiff(object):
 
     def __init__(self):
@@ -53,7 +54,7 @@ class ExecStateDiff(object):
         return self.function_states[-1].after
 
     # the number of nested function calls
-    @property 
+    @property
     def depth(self):
         return len(self._function_states)
 
@@ -71,7 +72,7 @@ class FunctionStateDiff(object):
         # Variables that were updated in this step
         self._updated_vars = {}
 
-    def update (self, frame, prev_vars, new_vars):
+    def update(self, frame, prev_vars, new_vars):
         self._lineno = frame.f_lineno
         for key, value in new_vars.items():
             #  print(f"prev:{prev_vars}, new:{new_vars}")
