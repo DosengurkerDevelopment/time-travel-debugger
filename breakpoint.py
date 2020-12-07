@@ -8,25 +8,31 @@ class Breakpoint(object):
         # TODO: Do we need the id here ?
         self._id = id
         self._filename = filename
-        self._location = location
+        if bp_type == 'line':
+            self._location = int(location)
+        else:
+            self._location = location
         self._condition = condition
         self._active = True
         self._bp_type = bp_type
 
     def __iter__(self):
-        return iter((self.id, self.breakpoint_type, self.complete_location, self.status, self.condition))
+        return iter((self.id, self.breakpoint_type, self.abs_location, self.status, self.condition))
 
     def eval_condition(self, context):
         if self._active:
+            if not self._condition:
+                # We do not have a condition, so we always break
+                return True
             return eval(self._condition, context)
 
     def toggle(self):
         self._active = not self._active
 
-    def activate(self):
+    def enable(self):
         self._active = True
 
-    def deactivate(self):
+    def disable(self):
         self._active = False
 
     @property
@@ -38,7 +44,11 @@ class Breakpoint(object):
         return "active" if self._active else "not active"
 
     @property
-    def complete_location(self):
+    def location(self):
+        return self._location
+
+    @property
+    def abs_location(self):
         return self._filename + ":" + self._location
 
     @property

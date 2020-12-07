@@ -42,8 +42,11 @@ class TimeTravelTracer(object):
         # collect the code in a source_map, so we can print it later in the
         # debugger
         if frame.f_code.co_name not in self._source_map:
-            self._source_map[frame.f_code.co_name] = inspect.getsourcelines(
-                frame.f_code)
+            starting_line, code = inspect.getsourcelines(frame.f_code)
+            filename = inspect.getsourcefile(frame.f_code)
+
+            self._source_map[frame.f_code.co_name] = {
+                "start": starting_line, "code": code, "filename": filename}
         # TODO: check whether the current executed line contains a return
         # statement and then call self._exec_state_diff.return()
         frame.f_lineno
