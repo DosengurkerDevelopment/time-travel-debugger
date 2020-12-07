@@ -90,7 +90,7 @@ class DebuggerContext(object):
 
     def break_at_current(self):
         # TODO: Account for the different types of breakpoints
-        return self.curr_line in self._breakpoints
+        for bp in self._breakpoints:
 
     def is_at_line(self, line):
         return self.curr_line == line

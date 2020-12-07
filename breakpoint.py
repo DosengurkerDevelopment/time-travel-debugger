@@ -13,12 +13,12 @@ class Breakpoint(object):
         self._active = True
         self._bp_type = bp_type
 
+    def __iter__(self):
+        return iter((self.id, self.breakpoint_type, self.complete_location, self.status, self.condition))
+
     def eval_condition(self, context):
         if self._active:
             return eval(self._condition, context)
-
-    def get_location(self):
-        pass
 
     def toggle(self):
         self._active = not self._active
