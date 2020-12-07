@@ -1,9 +1,9 @@
 import inspect
 import sys
-import inspect
-from exec_state_diff import ExecStateDiff
 from copy import deepcopy
+from typing import List
 
+from exec_state_diff import ExecStateDiff
 
 
 class Tracer(object):
@@ -117,12 +117,12 @@ class ConditionalTracer(Tracer):
             self.print_debugger_status(frame, event, arg)
 
 
-
-
 class TimeTravelTracer(Tracer):
 
+    NO_TRACE = ['__exit__', 'get_trace']
+
     def __init__(self):
-        self._diffs:List[ExecStateDiff] = []
+        self._diffs: List[ExecStateDiff] = []
         self._source_map = {}
         self._last_vars = []
         self._last_frame = None
@@ -137,10 +137,8 @@ class TimeTravelTracer(Tracer):
 
     def _traceit(self, frame, event, arg):
         ''' Internal tracing method '''
-        #  if self.code is None:
-            #  self.code = frame.f_code
-        # don't trace __exit__ function and get_trace
-        if ( frame.f_code.co_name != '__exit__' )and( frame.f_code.co_name != 'get_trace' ):
+        # Don't trace __exit__ function and get_trace
+        if frame.f_code.co_name not in self.NO_TRACE:
             self.traceit(frame, event, arg)
         return self._traceit
 
@@ -152,14 +150,16 @@ class TimeTravelTracer(Tracer):
         having to backtrack to the beginning.
         '''
 
-        # collect the code in a source_map, so we can print it later in the debugger
+        # collect the code in a source_map, so we can print it later in the
+        # debugger
         if frame.f_code.co_name not in self._source_map:
-            self._source_map[frame.f_code.co_name] = inspect.getsourcelines(frame.f_code)
-        # TODO: check whether the current executed line contains a return statement and
-        # then call self._exec_state_diff.return()
+            self._source_map[frame.f_code.co_name] = inspect.getsourcelines(
+                frame.f_code)
+        # TODO: check whether the current executed line contains a return
+        # statement and then call self._exec_state_diff.return()
         frame.f_lineno
         # TODO: building exec_state_diff doesnt quite work yet!
-        if(frame.f_code.co_name != self._last_frame):
+        if frame.f_code.co_name != self._last_frame:
             print(f"call {frame.f_code.co_name}")
             # we called a new function, so setup a new scope of variables
             self._last_vars.append(frame.f_locals)
@@ -174,7 +174,7 @@ class TimeTravelTracer(Tracer):
             changed = self.changed_vars(frame.f_locals.copy())
             print("update")
             # new function, invoke in exec_state_diff accordingly
-            new_state = self._exec_state_diff.update(frame,prev_vars, changed)
+            new_state = self._exec_state_diff.update(frame, prev_vars, changed)
             # store the resulting diff
             self._diffs.append(deepcopy(new_state))
 
@@ -190,7 +190,7 @@ class TimeTravelTracer(Tracer):
             if (var_name not in self._last_vars[-1] or
                     self._last_vars[-1][var_name] != locals[var_name]):
                 changed[var_name] = locals[var_name]
-        # the new state in the current frame of tracing becomes the state of _last_vars
-        # for the current scope
+        # the new state in the current frame of tracing becomes the state of
+        # _last_vars for the current scope
         self._last_vars[-1] = locals.copy()
         return changed

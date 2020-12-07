@@ -1,4 +1,5 @@
 from typing import List
+from breakpoint import Breakpoint
 from exec_state_diff import ExecStateDiff
 
 # Contains the absolute state of all defined variables of all currently active
@@ -49,6 +50,7 @@ class DebuggerContext(object):
 
         # Current execution point
         self._exec_point = 0
+
         self._running = False
         self._stepping = True
 
@@ -57,8 +59,7 @@ class DebuggerContext(object):
     def stop_here(self):
         ''' Method to determine whether we need to stop at the current step
         Add all conditions here '''
-        line, _ = self._exec_state_diffs[self._exec_point]
-        if self._stepping or line in self._breakpoints:
+        if self._stepping or self.break_at_current():
             # After stopping we want to be interactive again
             self.interact = True
             return True
@@ -69,6 +70,11 @@ class DebuggerContext(object):
     def curr_line(self):
         line, _ = self._exec_state_diffs[self._exec_point]
         return line
+
+    @property
+    def curr_diff(self):
+        diff = self._exec_state_diffs[self._exec_point]
+        return diff
 
     @property
     def breakpoints(self):
@@ -83,6 +89,7 @@ class DebuggerContext(object):
         return self._at_end
 
     def break_at_current(self):
+        # TODO: Account for the different types of breakpoints
         return self.curr_line in self._breakpoints
 
     def is_at_line(self, line):
@@ -93,8 +100,7 @@ class DebuggerContext(object):
         the with block is finished '''
         while self._exec_point < len(self._exec_state_diffs):
             # The diff of the current execution point
-            diff = self._exec_state_diffs[self._exec_point]
-            #  self.curr_line = line
+            diff = self.curr_diff
             #  Assemble the vars of the current state of the program
             if self.stop_here():
                 # Get a command
@@ -104,7 +110,7 @@ class DebuggerContext(object):
         ''' Step forward one instruction at a time '''
         if self._exec_point < len(self._exec_state_diffs) - 1:
             self._exec_point += 1
-            diff = self._exec_state_diffs[self._exec_point]
+            diff = self.curr_diff
             print(diff)
             self._current_state.update(diff)
             self._at_end = False
@@ -117,7 +123,7 @@ class DebuggerContext(object):
         ''' Step backward one step at a time '''
         # Check whether we reached the start of the program
         if self._exec_point > 0:
-            diff = self._exec_state_diffs[self._exec_point]
+            diff = self.curr_diff
             self._exec_point -= 1
             self._current_state.revert(diff)
             self._at_start = False
@@ -125,3 +131,28 @@ class DebuggerContext(object):
             self._at_start = True
 
         self._at_end = False
+
+    def get_breakpoint(self, id):
+        for b in self._breakpoints:
+            if b.id == id:
+                return b
+        return None
+
+    def add_breakpoint(self, location, bp_type, filename="", cond=""):
+        # Find next breakpoint id
+        next_bp_id = max([b.id for b in self._breakpoints]) + 1
+        new_bp = Breakpoint(next_bp_id, location, filename, bp_type, cond)
+        self._breakpoints.append(new_bp)
+
+    def remove_breakpoint(self, id):
+        b = self.get_breakpoint(id)
+        if b is not None:
+            self._breakpoints.remove(b)
+
+    def disable_breakpoint(self, id):
+        breakpoint = self.get_breakpoint(id)
+        breakpoint.deactivate()
+
+    def enable_breakpoint(self, id):
+        breakpoint = self.get_breakpoint(id)
+        breakpoint.activate()

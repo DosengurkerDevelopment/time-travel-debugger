@@ -1,5 +1,6 @@
 import inspect
 import sys
+from tabulate import tabulate
 
 from debugger import Debugger
 from tracer import TimeTravelTracer
@@ -153,24 +154,42 @@ class TimeTravelDebugger(Debugger):
 
     def break_command(self, arg=""):
         ''' Insert a breakpoint at the given location '''
-        pass
+        # Find out which type of breakpoint we want to insert
+        if arg.isnumeric():
+            # Line breakpoint
+            self._context.add_breakpoint(arg, "line")
+        elif ':' not in arg:
+            # Function breakpoint for different file
+            self._context.add_breakpoint(arg, "func")
+        else:
+            filename, function_name = arg.split(':')
+            self._context.add_breakpoint(function_name, filename, "func")
 
     def breakpoints_command(self):
         ''' List all breakpoints '''
-        pass
+
+        table_template = "{:^15}|{:^6}|{:^20}|{:^15}|{:^20}"
+        header = table_template.format('id', 'type',
+                                       'location', 'active', 'condition')
+
+        print(header)
+        print('-'*len(header))
+
+        for bp in self._context.breakpoints:
+            print(table_template.format(bp.id, bp.breakpoint_type,
+                                        bp.complete_location, bp.status, bp.condition))
 
     def delete_command(self, arg=""):
         ''' Remove the given breakpoint '''
-        pass
+        self._context.remove_breakpoint(int(arg))
 
-    def disable_commad(self, arg=""):
-        ''' Disable the given breakpoint '''
-        pass
+    def disable_command(self, arg=""):
+        self._context.disable_breakpoint(int(arg))
 
     def enable_command(self, arg=""):
-        ''' Enable the given breakpoint '''
-        pass
+        self._context.enable_breakpoint(int(arg))
 
     def cond_command(self, arg=""):
         ''' Set a conditional breakpoint at the given location '''
-        pass
+        location, condition = arg.split()
+        self._context.add_breakpoint(location, "cond", cond=condition)
