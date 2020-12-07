@@ -92,10 +92,11 @@ class TimeTravelTracer(object):
 
         # collect the code in a source_map, so we can print it later in the
         # debugger
+        filename = inspect.getsourcefile(frame.f_code)
+        code, startline = inspect.getsourcelines(frame.f_code)
         if frame.f_code.co_name not in self._source_map:
-            self._source_map[frame.f_code.co_name] = inspect.getsourcelines(
-                frame.f_code)
-        code, startline = self._source_map[frame.f_code.co_name]
+            self._source_map[frame.f_code.co_name] = {\
+                "start": startline, "code": code, "filename": filename}
         if frame.f_lineno == startline or frame.f_lineno == startline+(len(code)):
             # first call of traceit in current frame, so ignore it
             return self._traceit
@@ -107,25 +108,6 @@ class TimeTravelTracer(object):
             print("return")
             print(f"last_vars: {self._last_vars}")
             new_state =  self._do_return()
-        print(frame.f_code.co_name)
-        print(f"locals :{frame.f_locals}")
-
-        if frame.f_code.co_name != self._last_frame:
-            starting_line, code = inspect.getsourcelines(frame.f_code)
-            filename = inspect.getsourcefile(frame.f_code)
-
-            self._source_map[frame.f_code.co_name] = {
-                "start": starting_line, "code": code, "filename": filename}
-
-        code = self._source_map[frame.f_code.co_name]['code']
-        startline = self._source_map[frame.f_code.co_name]['start']
-
-        line_code = code[frame.f_lineno - startline]
-        print(">>" + line_code.rstrip())
-
-        if "return " in line_code:
-            print("return")
-            new_state = self._do_return()
         # check if last action was a return statement
         # in that case don't do call
         elif self._last_action != Action.RET\
