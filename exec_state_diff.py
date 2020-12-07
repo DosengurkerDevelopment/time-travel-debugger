@@ -102,9 +102,6 @@ class FunctionStateDiff(object):
         self._updated_vars = {}
         self._lineno = frame.f_lineno
         for key, value in changed.items():
-            #  print(f"prev:{prev_vars}, new:{new_vars}")
-            print(f"key: {key}, value: {value}")
-            #  print(prev_vars[key])
             if key in prev_vars:
                 # only push change, if we really changed something
                 if value != prev_vars[key]:
