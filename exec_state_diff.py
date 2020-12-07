@@ -1,4 +1,5 @@
 from typing import List, Dict, Any
+import inspect
 import collections
 from enum import Enum
 
@@ -42,10 +43,6 @@ class ExecStateDiff(object):
     def __repr__(self):
         return str(self)
 
-    #  @property
-    #  def frame(self):
-        #  return self._function_states[-1].frame
-
     @property
     def action(self):
         return self._action
@@ -60,19 +57,23 @@ class ExecStateDiff(object):
 
     @property
     def added(self):
-        return self.function_states[-1].added
+        return self._function_states[-1].added
 
     @property
     def updated(self):
-        return self.function_states[-1].updated
+        return self._function_states[-1].updated
 
     @property
     def before(self):
-        return self.function_states[-1].before
+        return self._function_states[-1].before
 
     @property
     def after(self):
-        return self.function_states[-1].after
+        return self._function_states[-1].after
+
+    @property
+    def file_name(self):
+        return self._function_states[-1].file_name
 
     # the number of nested function calls
     @property
@@ -88,6 +89,7 @@ class FunctionStateDiff(object):
     def __init__(self, frame):
         # Hash of the frame this diff belongs to
         self._frame = hash(frame)
+        self._file_name = inspect.getfile(frame)
         self._func_name = frame.f_code.co_name
         # Line number of the diff
         self._lineno = frame.f_lineno
@@ -118,7 +120,6 @@ class FunctionStateDiff(object):
     def __repr__(self):
         return str(self)
 
-
     @property
     def frame(self):
         return self._frame
@@ -144,5 +145,9 @@ class FunctionStateDiff(object):
         return self._added_vars + [x.after for x in self._updated_vars]
 
     @property
+    def file_name(self):
+        return self._file_name
+
+    @property
     def func_name(self):
-        return self.func_name
+        return self._func_name

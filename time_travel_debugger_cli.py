@@ -185,17 +185,14 @@ class TimeTravelDebugger(object):
 
     def breakpoints_command(self):
         ''' List all breakpoints '''
-
         table_template = "{:^15}|{:^6}|{:^20}|{:^15}|{:^20}"
         header = table_template.format('id', 'type',
                                        'location', 'active', 'condition')
 
         print(header)
         print('-'*len(header))
-
         for bp in self._context.breakpoints:
-            print(table_template.format(bp.id, bp.breakpoint_type,
-                                        bp.complete_location, bp.status, bp.condition))
+            print(table_template.format(*bp))
 
     def delete_command(self, arg=""):
         ''' Remove the given breakpoint '''

@@ -59,11 +59,12 @@ class DebuggerContext(object):
     def stop_here(self):
         ''' Method to determine whether we need to stop at the current step
         Add all conditions here '''
-        if self._stepping or self.break_at_current():
+        if self._stepping or self.break_here():
             # After stopping we want to be interactive again
             self.interact = True
             return True
         else:
+            # TODO: Don't we have to set self.interact = false ?
             return False
 
     @property
@@ -88,19 +89,36 @@ class DebuggerContext(object):
     def at_end(self):
         return self._at_end
 
-    def break_at_current(self):
-        # TODO: Account for the different types of breakpoints
-        return self.curr_line in self._breakpoints
+    @property
+    def curr_vars(self):
+        return self._current_state.frames[-1]
+
+    def find_line_break(self, line, filename):
+        pass
+
+    def break_here(self):
+        for bp in self.breakpoints:
+            if self.is_at_breakpoint(bp) and bp.eval_condition(self.curr_vars):
+                return True
+        return False
 
     def is_at_line(self, line):
         return self.curr_line == line
+
+    def is_in_function(self, func, file):
+        return self.curr_diff.func_name == func \
+            and self.curr_diff.file_name == file
+
+    def is_at_breakpoint(self, bp):
+        if bp.breakpoint_type == 'func':
+            return self.is_in_function(bp.location, bp.filename)
+        else:
+            return self.is_at_line(bp.location)
 
     def start(self, get_command, exec_command):
         ''' Interaction loop that is run after the execution of the code inside
         the with block is finished '''
         while self._exec_point < len(self._exec_state_diffs):
-            # The diff of the current execution point
-            diff = self.curr_diff
             #  Assemble the vars of the current state of the program
             if self.stop_here():
                 # Get a command
@@ -133,26 +151,59 @@ class DebuggerContext(object):
         self._at_end = False
 
     def get_breakpoint(self, id):
-        for b in self._breakpoints:
+        for b in self.breakpoints:
             if b.id == id:
                 return b
         return None
 
     def add_breakpoint(self, location, bp_type, filename="", cond=""):
         # Find next breakpoint id
-        next_bp_id = max([b.id for b in self._breakpoints]) + 1
+        if not self.breakpoints:
+            next_bp_id = 1
+        else:
+            next_bp_id = max([b.id for b in self.breakpoints]) + 1
+
+        if not filename:
+            filename = self.curr_diff.file_name
+
+        if bp_type in ('line', 'cond'):
+            location = int(location)
+
+            # Find the code object corresponding to this line number and filename
+            for source in self._source_map.values():
+                if source['filename'] == filename:
+                    starting_line = source['line']
+                    code = source['code']
+
+                    if starting_line > location:
+                        continue
+
+                    if location > starting_line + len(code):
+                        continue
+
+                    line = code[starting_line - location + 1]
+                    while line.startswith('\n') or line.startswith('#'):
+                        location += 1
+                        line = code[starting_line - location + 1]
+
+                    break
+            else:
+                # TODO: What to do if we can't find a matching code object ?
+                return False
+
         new_bp = Breakpoint(next_bp_id, location, filename, bp_type, cond)
-        self._breakpoints.append(new_bp)
+        self.breakpoints.append(new_bp)
+        return True
 
     def remove_breakpoint(self, id):
         b = self.get_breakpoint(id)
         if b is not None:
-            self._breakpoints.remove(b)
+            self.breakpoints.remove(b)
 
     def disable_breakpoint(self, id):
         breakpoint = self.get_breakpoint(id)
-        breakpoint.deactivate()
+        breakpoint.disable()
 
     def enable_breakpoint(self, id):
         breakpoint = self.get_breakpoint(id)
-        breakpoint.activate()
+        breakpoint.enable()

@@ -10,6 +10,7 @@ from exec_state_diff import ExecStateDiff, Action
 class TimeTravelTracer(object):
 
     NO_TRACE = ['__exit__', 'get_trace']
+
     def __init__(self):
         self._diffs: List[ExecStateDiff] = []
         self._source_map = {}
@@ -47,7 +48,7 @@ class TimeTravelTracer(object):
         new_state = self._current_diff.ret()
         return new_state
 
-    def _do_call(self,frame):
+    def _do_call(self, frame):
         # we called a new function, so setup a new scope of variables
         self._last_vars.append(frame.f_locals.copy())
         # set last_frame manually since we don't compute _changed_vars
@@ -56,8 +57,9 @@ class TimeTravelTracer(object):
         new_state = self._current_diff.call(frame)
         return new_state
 
-    def _do_update(self,frame):
-        assert len(self._last_vars) > 0, f"all actions:{[x.action for x in self._diffs]}"
+    def _do_update(self, frame):
+        assert len(
+            self._last_vars) > 0, f"all actions:{[x.action for x in self._diffs]}"
         # save old scope for the update on _exec_state_diff
         prev_vars = self._last_vars[-1]
         changed = self._changed_vars(frame.f_locals.copy())
@@ -68,7 +70,7 @@ class TimeTravelTracer(object):
 
     @property
     def _last_action(self):
-        if len(self._diffs)>0:
+        if len(self._diffs) > 0:
             return self._diffs[-1].action
         else:
             return None
@@ -79,7 +81,6 @@ class TimeTravelTracer(object):
             return deepcopy(self._diffs[-1])
         else:
             return ExecStateDiff()
-
 
     def traceit(self, frame, event, arg):
         ''' Record the execution inside the with block.
@@ -106,15 +107,34 @@ class TimeTravelTracer(object):
             print("return")
             print(f"last_vars: {self._last_vars}")
             new_state =  self._do_return()
+        print(frame.f_code.co_name)
+        print(f"locals :{frame.f_locals}")
+
+        if frame.f_code.co_name != self._last_frame:
+            starting_line, code = inspect.getsourcelines(frame.f_code)
+            filename = inspect.getsourcefile(frame.f_code)
+
+            self._source_map[frame.f_code.co_name] = {
+                "start": starting_line, "code": code, "filename": filename}
+
+        code = self._source_map[frame.f_code.co_name]['code']
+        startline = self._source_map[frame.f_code.co_name]['start']
+
+        line_code = code[frame.f_lineno - startline]
+        print(">>" + line_code.rstrip())
+
+        if "return " in line_code:
+            print("return")
+            new_state = self._do_return()
         # check if last action was a return statement
         # in that case don't do call
         elif self._last_action != Action.RET\
                 and frame.f_code.co_name != self._last_frame:
             print(f"call {frame.f_code.co_name}")
-            new_state =  self._do_call(frame)
+            new_state = self._do_call(frame)
         else:
             print("update")
-            new_state =  self._do_update(frame)
+            new_state = self._do_update(frame)
 
         #  print(f"last_vars {self._last_vars[-1]}")
         #  print(f"locals {frame.f_locals}")
