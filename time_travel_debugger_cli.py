@@ -1,15 +1,13 @@
 import inspect
 import sys
-from tabulate import tabulate
 
-from debugger import Debugger
 from tracer import TimeTravelTracer
 from debugger_context import DebuggerContext
 
 
 # TODO: We could actually just inherit from Tracer instead since we end up
 # overriding all the methods from Debugger anyway.
-class TimeTravelDebugger(Debugger):
+class TimeTravelDebugger(object):
     ''' Command line debugger that supports stepping backwards in time. '''
 
     def __init__(self, file=sys.stdout):
@@ -18,8 +16,9 @@ class TimeTravelDebugger(Debugger):
         self._tracer = TimeTravelTracer()
         self._current_state = None
         self._context = None
+        self._file = file
 
-        super().__init__(file)
+        #  super().__init__(file)
 
     def __enter__(self, *args, **kwargs):
         print("start tracing")
@@ -46,6 +45,25 @@ class TimeTravelDebugger(Debugger):
         method = self.command_method(cmd)
         if method:
             method(arg)
+
+    def commands(self):
+        cmds = sorted([method.replace('_command', '')
+                       for method in dir(self.__class__)
+                       if method.endswith('_command')])
+        return cmds
+
+    def command_method(self, command):
+        if command.startswith('#'):
+            return None  # Comment
+
+        possible_cmds = [possible_cmd for possible_cmd in self.commands()
+                         if possible_cmd.startswith(command)]
+        if len(possible_cmds) != 1:
+            self.help_command(command)
+            return None
+
+        cmd = possible_cmds[0]
+        return getattr(self, cmd + '_command')
 
     ### COMMANDS ###
     def print_command(self, arg=""):

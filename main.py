@@ -1,6 +1,4 @@
 import sys
-from tracer import Tracer
-from debugger import Debugger
 from time_travel_debugger_cli import TimeTravelDebugger
 
 def id(a):
