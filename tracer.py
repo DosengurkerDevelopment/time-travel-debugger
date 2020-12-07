@@ -3,19 +3,17 @@ import sys
 from copy import deepcopy
 from typing import List
 
-from exec_state_diff import ExecStateDiff
+from exec_state_diff import ExecStateDiff, Action
 
 
 class TimeTravelTracer(object):
 
     NO_TRACE = ['__exit__', 'get_trace']
-
     def __init__(self):
-        self._diffs: List[ExecStateDiff] = []
+        self._diffs: List[ExecStateDiff] = [ExecStateDiff()]
         self._source_map = {}
         self._last_vars = []
         self._last_frame = None
-        self._exec_state_diff = ExecStateDiff()
 
     def get_trace(self):
         sys.settrace(None)
@@ -31,6 +29,53 @@ class TimeTravelTracer(object):
             self.traceit(frame, event, arg)
         return self._traceit
 
+    def _changed_vars(self, locals):
+        changed = {}
+        for var_name in locals:
+            # detect if a variable changed and push it into changed dict
+            if (var_name not in self._last_vars[-1] or
+                    self._last_vars[-1][var_name] != locals[var_name]):
+                changed[var_name] = locals[var_name]
+        # update last _last_vars
+        self._last_vars[-1] = locals.copy()
+        return changed
+
+    def _do_return(self):
+        self._last_vars.pop()
+        new_state = self._current_diff.ret()
+        return new_state
+
+    def _do_call(self,frame):
+        # we called a new function, so setup a new scope of variables
+        self._last_vars.append(frame.f_locals.copy())
+        # set last_frame manually since we don't compute _changed_vars
+        self._last_frame = frame.f_code.co_name
+        # create new function frame in current _exec_state_diff
+        new_state = self._current_diff.call(frame)
+        return new_state
+
+    def _do_update(self,frame):
+        assert len(self._last_vars) > 0, f"all actions:{[x.action for x in self._diffs]}"
+        # save old scope for the update on _exec_state_diff
+        prev_vars = self._last_vars[-1]
+        changed = self._changed_vars(frame.f_locals.copy())
+        #  added = self._added_vars(frame.f_locals.copy())
+        # new function, invoke in exec_state_diff accordingly
+        new_state = self._current_diff.update(frame, prev_vars, changed)
+        return new_state
+
+    @property
+    def _last_action(self):
+        if len(self._diffs)>0:
+            return self._diffs[-1].action
+        else:
+            return None
+
+    @property
+    def _current_diff(self):
+        return deepcopy(self._diffs[-1])
+
+
     def traceit(self, frame, event, arg):
         ''' Record the execution inside the with block.
         We do not store the complete state for each execution point, instead
@@ -41,45 +86,28 @@ class TimeTravelTracer(object):
 
         # collect the code in a source_map, so we can print it later in the
         # debugger
+        print(frame.f_code.co_name)
+        print(f"locals :{frame.f_locals}")
         if frame.f_code.co_name not in self._source_map:
             self._source_map[frame.f_code.co_name] = inspect.getsourcelines(
                 frame.f_code)
-        # TODO: check whether the current executed line contains a return
-        # statement and then call self._exec_state_diff.return()
-        frame.f_lineno
-        # TODO: building exec_state_diff doesnt quite work yet!
-        if frame.f_code.co_name != self._last_frame:
+        code, startline = self._source_map[frame.f_code.co_name]
+        line_code = code[frame.f_lineno - startline ]
+        print(">>" + line_code.rstrip())
+        if "return " in line_code:
+            print("return")
+            new_state =  self._do_return()
+        # check if last action was a return statement
+        # in that case don't do call
+        elif self._last_action != Action.RET\
+                and frame.f_code.co_name != self._last_frame:
             print(f"call {frame.f_code.co_name}")
-            # we called a new function, so setup a new scope of variables
-            self._last_vars.append(frame.f_locals)
-            self._last_frame = frame.f_code.co_name
-            # create new function frame in exec_state_diff
-            new_state = self._exec_state_diff.call(frame)
-            # store the resulting diff
-            self._diffs.append(deepcopy(new_state))
+            new_state =  self._do_call(frame)
         else:
-            # save old scope for the update on _exec_state_diff
-            prev_vars = self._last_vars[-1]
-            changed = self.changed_vars(frame.f_locals.copy())
             print("update")
-            # new function, invoke in exec_state_diff accordingly
-            new_state = self._exec_state_diff.update(frame, prev_vars, changed)
-            # store the resulting diff
-            self._diffs.append(deepcopy(new_state))
+            new_state =  self._do_update(frame)
 
         #  print(f"last_vars {self._last_vars[-1]}")
-        #  print(f"changed {changed}")
         #  print(f"locals {frame.f_locals}")
+        self._diffs.append(new_state)
         return self._traceit
-
-    def changed_vars(self, locals):
-        changed = {}
-        for var_name in locals:
-            # detect if a variable changed and push it into changed dict
-            if (var_name not in self._last_vars[-1] or
-                    self._last_vars[-1][var_name] != locals[var_name]):
-                changed[var_name] = locals[var_name]
-        # the new state in the current frame of tracing becomes the state of
-        # _last_vars for the current scope
-        self._last_vars[-1] = locals.copy()
-        return changed

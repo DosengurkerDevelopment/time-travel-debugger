@@ -1,26 +1,39 @@
 from typing import List, Dict, Any
 import collections
-
+from enum import Enum
 
 # named tuple for a variable change
 VarUpdate = collections.namedtuple('VarUpdate', 'before after')
 
+class Action(Enum):
+    CALL = 1
+    RET = 2
+    UPDATE = 3
 
+
+'''
+Model for saving differences between states of executions
+'''
 class ExecStateDiff(object):
 
     def __init__(self):
         self._function_states = []
+        self._action = None
 
     def call(self, frame):
         self._function_states.append(FunctionStateDiff(frame))
+        self._action = Action.CALL
         return self
 
     def update(self, frame, prev_vars, new_vars):
         self._function_states[-1].update(frame, prev_vars, new_vars)
+        self._action = Action.UPDATE
         return self
 
-    def ret(self, frame):
+    def ret(self):
+        assert len(self._function_states ) > 0
         self._function_states.pop()
+        self._action = Action.RET
         return self
 
     def __str__(self):
@@ -32,6 +45,10 @@ class ExecStateDiff(object):
     #  @property
     #  def frame(self):
         #  return self._function_states[-1].frame
+
+    @property
+    def action(self):
+        return self._action
 
     @property
     def func_name(self):
@@ -63,6 +80,9 @@ class ExecStateDiff(object):
         return len(self._function_states)
 
 
+'''
+Model for saving differences between states of executions for one function scope
+'''
 class FunctionStateDiff(object):
 
     def __init__(self, frame):
@@ -77,9 +97,11 @@ class FunctionStateDiff(object):
         # Variables that were updated in this step
         self._updated_vars = {}
 
-    def update(self, frame, prev_vars, new_vars):
+    def update(self, frame, prev_vars, changed):
         self._lineno = frame.f_lineno
-        for key, value in new_vars.items():
+        print(prev_vars)
+        print(changed)
+        for key, value in changed.items():
             #  print(f"prev:{prev_vars}, new:{new_vars}")
             if key in prev_vars:
                 # only push change, if we really changed something

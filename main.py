@@ -35,7 +35,4 @@ def remove_html_markup(s):
 
 if __name__ == '__main__':
     with TimeTravelDebugger():
-        #  wo_html = remove_html_markup("<a='insert <name> here'>this is a name holder</a>")
-        #  print(wo_html)
-        a = call_id(10)
-        print(a)
+        id(10)
