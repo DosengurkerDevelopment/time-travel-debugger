@@ -34,6 +34,10 @@ class ExecStateDiff(object):
         #  return self._function_states[-1].frame
 
     @property
+    def func_name(self):
+        return self._function_states[-1].func_name
+
+    @property
     def lineno(self):
         return self._function_states[-1].lineno
 
@@ -64,6 +68,7 @@ class FunctionStateDiff(object):
     def __init__(self, frame):
         # Hash of the frame this diff belongs to
         self._frame = hash(frame)
+        self._func_name = frame.f_code.co_name
         # Line number of the diff
         self._lineno = frame.f_lineno
 
@@ -116,3 +121,7 @@ class FunctionStateDiff(object):
     @property
     def after(self):
         return self._added_vars + [x.after for x in self._updated_vars]
+
+    @property
+    def func_name(self):
+        return self.func_name
