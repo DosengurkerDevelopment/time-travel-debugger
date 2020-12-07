@@ -1,5 +1,6 @@
 import inspect
 import sys
+import linecache
 from copy import deepcopy
 from typing import List
 
@@ -10,7 +11,7 @@ class TimeTravelTracer(object):
 
     NO_TRACE = ['__exit__', 'get_trace']
     def __init__(self):
-        self._diffs: List[ExecStateDiff] = [ExecStateDiff()]
+        self._diffs: List[ExecStateDiff] = []
         self._source_map = {}
         self._last_vars = []
         self._last_frame = None
@@ -41,6 +42,7 @@ class TimeTravelTracer(object):
         return changed
 
     def _do_return(self):
+        assert len(self._last_vars )> 0
         self._last_vars.pop()
         new_state = self._current_diff.ret()
         return new_state
@@ -73,7 +75,10 @@ class TimeTravelTracer(object):
 
     @property
     def _current_diff(self):
-        return deepcopy(self._diffs[-1])
+        if len(self._diffs) > 0:
+            return deepcopy(self._diffs[-1])
+        else:
+            return ExecStateDiff()
 
 
     def traceit(self, frame, event, arg):
@@ -86,16 +91,20 @@ class TimeTravelTracer(object):
 
         # collect the code in a source_map, so we can print it later in the
         # debugger
-        print(frame.f_code.co_name)
-        print(f"locals :{frame.f_locals}")
         if frame.f_code.co_name not in self._source_map:
             self._source_map[frame.f_code.co_name] = inspect.getsourcelines(
                 frame.f_code)
         code, startline = self._source_map[frame.f_code.co_name]
-        line_code = code[frame.f_lineno - startline ]
-        print(">>" + line_code.rstrip())
+        if frame.f_lineno == startline or frame.f_lineno == startline+(len(code)):
+            # first call of traceit in current frame, so ignore it
+            return self._traceit
+        line_code = code[frame.f_lineno - startline]
+        print(f"current_function: { frame.f_code.co_name }")
+        print(f"{frame.f_lineno}: {line_code.rstrip()}")
+        print(f"locals :{frame.f_locals}")
         if "return " in line_code:
             print("return")
+            print(f"last_vars: {self._last_vars}")
             new_state =  self._do_return()
         # check if last action was a return statement
         # in that case don't do call

@@ -93,16 +93,18 @@ class FunctionStateDiff(object):
         self._lineno = frame.f_lineno
 
         # Variables that were added to the state in this step
-        self._added_vars = frame.f_locals
+        self._added_vars = frame.f_locals.copy()
         # Variables that were updated in this step
         self._updated_vars = {}
 
     def update(self, frame, prev_vars, changed):
+        self._added_vars = {}
+        self._updated_vars = {}
         self._lineno = frame.f_lineno
-        print(prev_vars)
-        print(changed)
         for key, value in changed.items():
             #  print(f"prev:{prev_vars}, new:{new_vars}")
+            print(f"key: {key}, value: {value}")
+            #  print(prev_vars[key])
             if key in prev_vars:
                 # only push change, if we really changed something
                 if value != prev_vars[key]:

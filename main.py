@@ -11,7 +11,7 @@ def call_id(a):
     while a > 5:
         a -= 1
         test += "t"
-    res = id(a)
+        id(a)
     print(test)
     return res
 
@@ -35,4 +35,4 @@ def remove_html_markup(s):
 
 if __name__ == '__main__':
     with TimeTravelDebugger():
-        id(10)
+        call_id(10)
