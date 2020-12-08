@@ -1,6 +1,7 @@
 from typing import List
 from ..model.breakpoint import Breakpoint
 from ..model.exec_state_diff import ExecStateDiff
+from copy import deepcopy
 import pdb
 
 # Contains the absolute state of all defined variables of all currently active
@@ -24,8 +25,8 @@ class StateMachine(object):
 
         if self._exec_point < len(self._exec_state_diffs) - 1:
             self._exec_point += 1
-            diff = self._exec_state_diffs[self._exec_point]
-            self._curr_state.update(diff.changed)
+            diff = deepcopy(self._exec_state_diffs[self._exec_point])
+            self._curr_state = {**self._curr_state, **diff.changed} 
             self._at_end = False
         else:
             self._at_end = True
@@ -39,9 +40,9 @@ class StateMachine(object):
         # Check whether we reached the start of the program
         if self._exec_point > 0:
             self._exec_point -= 1
-            diff = self._exec_state_diffs[self._exec_point]
+            diff = deepcopy(self._exec_state_diffs[self._exec_point])
             # rewind updated vars
-            self._curr_state.update(diff.updated)
+            self._curr_state = {**self._curr_state, **diff.changed} 
             # delete added vars
             for k in diff.added:
                 try:
@@ -150,7 +151,7 @@ class DebuggerContext(object):
             #  Assemble the vars of the current state of the program
             if self.stop_here():
                 # Get a command
-                exec_command(get_command(), self._state_machine)
+                exec_command(get_command(), self._state_machine.curr_state)
 
     def step_forward(self):
         ''' Step forward one instruction at a time '''
