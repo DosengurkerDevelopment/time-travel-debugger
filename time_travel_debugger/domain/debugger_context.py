@@ -30,7 +30,6 @@ class StateMachine(object):
         else:
             self._at_end = True
         self._at_start = False
-        
 
     def backward(self):
         '''
@@ -47,7 +46,7 @@ class StateMachine(object):
             for k in diff.added:
                 try:
                     self._curr_state.pop(k)
-                except:
+                except KeyError:
                     pass
             self._at_start = False
         else:
@@ -139,7 +138,7 @@ class DebuggerContext(object):
             and self.curr_diff.file_name == file
 
     def is_at_breakpoint(self, bp):
-        if bp.breakpoint_type == 'func':
+        if bp.breakpoint_type == Breakpoint.FUNC:
             return self.is_in_function(bp.location, bp.filename)
         else:
             return self.is_at_line(bp.location)
@@ -177,13 +176,13 @@ class DebuggerContext(object):
         if not filename:
             filename = self.curr_diff.file_name
 
-        if bp_type in ('line', 'cond'):
+        if bp_type != Breakpoint.FUNC:
             location = int(location)
 
             # Find the code object corresponding to this line number and filename
             for source in self._source_map.values():
                 if source['filename'] == filename:
-                    starting_line = source['line']
+                    starting_line = source['start']
                     code = source['code']
 
                     if starting_line > location:

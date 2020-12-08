@@ -1,17 +1,28 @@
 class Breakpoint(object):
+    ''' Container class that holds one breakpoint and all its properties '''
 
     LINE = 'line'
     FUNC = 'func'
     COND = 'cond'
 
     def __init__(self, id, location, filename, bp_type, condition=""):
-        # TODO: Do we need the id here ?
+        ''' Init method for the breakpoint class.  
+            Args:
+                - id: id of the breakpoint
+                - location: location of the breapoint, either a line number or
+                      function name
+                - filename: name of the source file the line or function is
+                      located in
+                - bp_type: type of the breakpoint, one of LINE, FUNC, COND
+
+            Keyword Args:
+                - condition: a python expression passed as a string that is
+                    evaluated whenever we pass this breakpoint
+        '''
+
         self._id = id
         self._filename = filename
-        if bp_type == 'line':
-            self._location = int(location)
-        else:
-            self._location = location
+        self._location = location
         self._condition = condition
         self._active = True
         self._bp_type = bp_type
@@ -20,6 +31,8 @@ class Breakpoint(object):
         return iter((self.id, self.breakpoint_type, self.abs_location, self.status, self.condition))
 
     def eval_condition(self, context):
+        ''' Evaluate the condition given in the constructor in the given context.
+            Always returns True if no condition was given.  '''
         if self._active:
             if not self._condition:
                 # We do not have a condition, so we always break
@@ -49,7 +62,7 @@ class Breakpoint(object):
 
     @property
     def abs_location(self):
-        return self._filename + ":" + self._location
+        return self._filename + ":" + str(self._location)
 
     @property
     def breakpoint_type(self):
@@ -62,7 +75,7 @@ class Breakpoint(object):
     def __str__(self):
         s = f"{self._id}\
  {self._bp_type}\
- {self._filename}:{self._location}"
+ {self._filename}:{str(self._location)}"
 
         if self._active:
             s += " active"

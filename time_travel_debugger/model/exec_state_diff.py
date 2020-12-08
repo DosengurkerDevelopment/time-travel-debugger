@@ -6,18 +6,17 @@ from enum import Enum
 # named tuple for a variable change
 VarUpdate = collections.namedtuple('VarUpdate', 'before after')
 
+
 class Action(Enum):
     CALL = 1
     RET = 2
     UPDATE = 3
 
 
-'''
-Model for saving differences between states of executions
-'''
 class ExecStateDiff(object):
+    ''' Model for saving differences between states of executions '''
 
-    def __init__(self):
+   def __init__(self):
         self._function_states = []
         self._action = None
 
@@ -32,7 +31,7 @@ class ExecStateDiff(object):
         return self
 
     def ret(self):
-        assert len(self._function_states ) > 0
+        assert len(self._function_states) > 0
         self._function_states.pop()
         self._action = Action.RET
         return self
@@ -65,7 +64,8 @@ class ExecStateDiff(object):
 
     @property
     def changed(self):
-        return { **self.added , **self.updated }
+        return {**self.added, **self.updated}
+
     @property
     def file_name(self):
         return self._function_states[-1].file_name
@@ -73,13 +73,13 @@ class ExecStateDiff(object):
     # the number of nested function calls
     @property
     def depth(self):
-        return len(self._function_states) -1
+        return len(self._function_states) - 1
 
 
-'''
-Model for saving differences between states of executions for one function scope
-'''
+
+
 class FunctionStateDiff(object):
+    ''' Model for saving differences between states of executions for one function scope '''
 
     def __init__(self, frame):
         # Hash of the frame this diff belongs to
@@ -107,7 +107,6 @@ class FunctionStateDiff(object):
                     self._updated_vars[key] = update
             else:
                 self._added_vars[key] = value
-
 
     def __str__(self):
         return f"<lineno: {self.lineno}, added:{self.added}, updated:{self.updated}>"
