@@ -4,7 +4,7 @@ import linecache
 from copy import deepcopy
 from typing import List
 
-from exec_state_diff import ExecStateDiff, Action
+from ..model.exec_state_diff import ExecStateDiff, Action
 
 
 class TimeTravelTracer(object):

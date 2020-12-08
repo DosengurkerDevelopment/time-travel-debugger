@@ -1,6 +1,6 @@
 from typing import List
-from breakpoint import Breakpoint
-from exec_state_diff import ExecStateDiff
+from ..model.breakpoint import Breakpoint
+from ..model.exec_state_diff import ExecStateDiff
 import pdb
 
 # Contains the absolute state of all defined variables of all currently active

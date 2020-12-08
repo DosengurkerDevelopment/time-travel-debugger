@@ -1,8 +1,8 @@
 import inspect
 import sys
 
-from tracer import TimeTravelTracer
-from debugger_context import DebuggerContext
+from ..domain.tracer import TimeTravelTracer
+from ..domain.debugger_context import DebuggerContext
 
 
 # TODO: We could actually just inherit from Tracer instead since we end up

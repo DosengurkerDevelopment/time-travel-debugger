@@ -1,5 +1,5 @@
 import sys
-from time_travel_debugger_cli import TimeTravelDebugger
+from time_travel_debugger.view.cli import TimeTravelDebugger
 
 def id(a):
     b = 1234
