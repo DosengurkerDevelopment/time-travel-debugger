@@ -65,12 +65,17 @@ class TimeTravelDebugger(object):
         cmd = possible_cmds[0]
         return getattr(self, cmd + '_command')
 
+    def log(self, *objects, sep=' ', end='\n', flush=False):
+        """Like print(), but always sending to file given at initialization,
+           and always flushing"""
+        print(*objects, sep=sep, end=end, file=self._file, flush=True)
+
     ### COMMANDS ###
     def print_command(self, arg=""):
         ''' Print all variables or pass an expression to evaluate in the
         current context '''
         # Shorthand such that the following code is not as lengthy
-        curr_vars = self._current_state.frames[-1]
+        curr_vars = self._current_state
 
         if not arg:
             self.log(
