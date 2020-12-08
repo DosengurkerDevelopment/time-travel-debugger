@@ -38,7 +38,7 @@ class ExecStateDiff(object):
         return self
 
     def __str__(self):
-        return f"{self._function_states}\n"
+        return f"\t{self._action} \t- {self._function_states}\n"
 
     def __repr__(self):
         return str(self)
@@ -115,7 +115,7 @@ class FunctionStateDiff(object):
 
 
     def __str__(self):
-        return f"<added:{self.added}, updated:{self.updated}>"
+        return f"<lineno: {self.lineno}, added:{self.added}, updated:{self.updated}>"
 
     def __repr__(self):
         return str(self)

@@ -16,6 +16,7 @@ class TimeTravelTracer(object):
         self._source_map = {}
         self._last_vars = []
         self._last_frame = None
+        self._should_return = False
 
     def get_trace(self):
         sys.settrace(None)
@@ -46,6 +47,7 @@ class TimeTravelTracer(object):
         assert len(self._last_vars )> 0
         self._last_vars.pop()
         new_state = self._current_diff.ret()
+        self._last_frame = new_state.func_name
         return new_state
 
     def _do_call(self, frame):
@@ -63,6 +65,7 @@ class TimeTravelTracer(object):
         # save old scope for the update on _exec_state_diff
         prev_vars = self._last_vars[-1]
         changed = self._changed_vars(frame.f_locals.copy())
+        #  print(f"previous: {prev_vars}")
         #  added = self._added_vars(frame.f_locals.copy())
         # new function, invoke in exec_state_diff accordingly
         new_state = self._current_diff.update(frame, prev_vars, changed)
@@ -97,25 +100,36 @@ class TimeTravelTracer(object):
         if frame.f_code.co_name not in self._source_map:
             self._source_map[frame.f_code.co_name] = {\
                 "start": startline, "code": code, "filename": filename}
-        if frame.f_lineno == startline or frame.f_lineno == startline+(len(code)):
-            # first call of traceit in current frame, so ignore it
-            return self._traceit
+            if frame.f_lineno == startline:
+            # first call of traceit in current frame should be ignored
+                return self._traceit
         line_code = code[frame.f_lineno - startline]
-        print(f"current_function: { frame.f_code.co_name }")
+        #  print(f"current_function: { frame.f_code.co_name }")
         print(f"{frame.f_lineno}: {line_code.rstrip()}")
-        print(f"locals :{frame.f_locals}")
-        if "return " in line_code:
+        #  print(f"locals :{frame.f_locals}")
+        if "return " in line_code and self._should_return:
+            # we executed the statement before return, so we can return
             print("return")
-            print(f"last_vars: {self._last_vars}")
+            self._should_return = False
             new_state =  self._do_return()
         # check if last action was a return statement
-        # in that case don't do call
+        # in that case don't do call, since we step back in to previous frame
         elif self._last_action != Action.RET\
                 and frame.f_code.co_name != self._last_frame:
-            print(f"call {frame.f_code.co_name}")
+            print(f"CALL {frame.f_code.co_name}")
+            if "return " in line_code:
+                # this is the state where we first see return, but didnt execute the
+                # previous line yet
+                # so perform call and next round we can perform return
+                self._should_return = True
             new_state = self._do_call(frame)
         else:
-            print("update")
+            print("UPDATE")
+            if "return " in line_code:
+                # this is the state where we first see return, but didnt execute the
+                # previous line yet
+                # so perform update and next round we can perform return
+                self._should_return = True
             new_state = self._do_update(frame)
 
         #  print(f"last_vars {self._last_vars[-1]}")
