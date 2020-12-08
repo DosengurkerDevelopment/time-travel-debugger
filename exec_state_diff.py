@@ -64,13 +64,8 @@ class ExecStateDiff(object):
         return self._function_states[-1].updated
 
     @property
-    def before(self):
-        return self._function_states[-1].before
-
-    @property
-    def after(self):
-        return self._function_states[-1].after
-
+    def changed(self):
+        return { **self.added , **self.updated }
     @property
     def file_name(self):
         return self._function_states[-1].file_name
@@ -78,7 +73,7 @@ class ExecStateDiff(object):
     # the number of nested function calls
     @property
     def depth(self):
-        return len(self._function_states)
+        return len(self._function_states) -1
 
 
 '''
@@ -135,14 +130,6 @@ class FunctionStateDiff(object):
     @property
     def updated(self):
         return self._updated_vars
-
-    @property
-    def before(self):
-        return [x.before for x in self._updated_vars]
-
-    @property
-    def after(self):
-        return self._added_vars + [x.after for x in self._updated_vars]
 
     @property
     def file_name(self):
