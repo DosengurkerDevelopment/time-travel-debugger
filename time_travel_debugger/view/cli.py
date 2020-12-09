@@ -1,12 +1,14 @@
 import inspect
 import sys
 
+# DO NOT REMOVE THIS
+import readline
+
 from ..domain.tracer import TimeTravelTracer
 from ..domain.debugger_context import DebuggerContext
+from .completer import CLICompleter
 
 
-# TODO: We could actually just inherit from Tracer instead since we end up
-# overriding all the methods from Debugger anyway.
 class TimeTravelDebugger(object):
     ''' Command line debugger that supports stepping backwards in time. '''
 
@@ -17,7 +19,7 @@ class TimeTravelDebugger(object):
         self._current_state = None
         self._context = None
         self._file = file
-
+        self._last_command = ''
         #  super().__init__(file)
 
     def __enter__(self, *args, **kwargs):
@@ -28,9 +30,20 @@ class TimeTravelDebugger(object):
         print("stop tracing")
         diffs, source_map = self._tracer.get_trace()
         print(diffs, source_map)
+        self._completer = CLICompleter(self.commands())
+        readline.set_completer(self._completer.complete)
+        readline.parse_and_bind('tab: complete')
         self._context = DebuggerContext(diffs, source_map)
         self._context.start(
-            lambda: input("(debugger) "), self.execute)
+            self.get_input, self.execute)
+
+    def get_input(self):
+        cmd = input("(debugger) ")
+        if not cmd:
+            return self._last_command
+        else:
+            self._last_command = cmd
+            return cmd
 
     def execute(self, command, current_state):
         self._current_state = current_state
@@ -58,7 +71,8 @@ class TimeTravelDebugger(object):
 
         possible_cmds = [possible_cmd for possible_cmd in self.commands()
                          if possible_cmd.startswith(command)]
-        if len(possible_cmds) != 1:
+
+        if len(possible_cmds) != 1 and command not in possible_cmds:
             self.help_command(command)
             return None
 
@@ -71,6 +85,32 @@ class TimeTravelDebugger(object):
         print(*objects, sep=sep, end=end, file=self._file, flush=True)
 
     ### COMMANDS ###
+
+    def help_command(self, command=""):
+        '''Give help on given command. If no command is given, give help on all'''
+
+        if command:
+            possible_cmds = [possible_cmd for possible_cmd in self.commands()
+                             if possible_cmd.startswith(command)]
+
+            if len(possible_cmds) == 0:
+                self.log(
+                    f"Unknown command {repr(command)}. Possible commands are:")
+                possible_cmds = self.commands()
+            elif len(possible_cmds) > 1 and command not in possible_cmds:
+                self.log(
+                    f"Ambiguous command {repr(command)}. Possible expansions are:")
+        else:
+            possible_cmds = self.commands()
+
+        for cmd in possible_cmds:
+            method = self.command_method(cmd)
+            if method.__doc__ is not None:
+                desc = ' '.join(method.__doc__.split())
+            else:
+                desc = ''
+            self.log(f"{cmd:15} -- {desc}")
+
     def print_command(self, arg=""):
         ''' Print all variables or pass an expression to evaluate in the
         current context '''
@@ -204,9 +244,11 @@ class TimeTravelDebugger(object):
         self._context.remove_breakpoint(int(arg))
 
     def disable_command(self, arg=""):
+        ''' Disable the given breakpoint '''
         self._context.disable_breakpoint(int(arg))
 
     def enable_command(self, arg=""):
+        ''' Enable the given breakpoint '''
         self._context.enable_breakpoint(int(arg))
 
     def cond_command(self, arg=""):

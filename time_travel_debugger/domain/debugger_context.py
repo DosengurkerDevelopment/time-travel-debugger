@@ -2,7 +2,6 @@ from typing import List
 from ..model.breakpoint import Breakpoint
 from ..model.exec_state_diff import ExecStateDiff
 from copy import deepcopy
-import pdb
 
 # Contains the absolute state of all defined variables of all currently active
 # functions
@@ -25,12 +24,14 @@ class StateMachine(object):
 
         if self._exec_point < len(self._exec_state_diffs) - 1:
             self._exec_point += 1
-            diff = deepcopy(self._exec_state_diffs[self._exec_point])
-            self._curr_state = {**self._curr_state, **diff.changed} 
+            diff = deepcopy(self.curr_diff)
+            print(diff)
+            self._curr_state.update(diff.changed)
             self._at_end = False
         else:
             self._at_end = True
         self._at_start = False
+        print(self._curr_state)
 
     def backward(self):
         '''
@@ -39,10 +40,11 @@ class StateMachine(object):
 
         # Check whether we reached the start of the program
         if self._exec_point > 0:
+            diff = deepcopy(self.curr_diff)
             self._exec_point -= 1
-            diff = deepcopy(self._exec_state_diffs[self._exec_point])
+            print(diff)
             # rewind updated vars
-            self._curr_state = {**self._curr_state, **diff.changed} 
+            self._curr_state.update(diff.changed)
             # delete added vars
             for k in diff.added:
                 try:
@@ -54,6 +56,11 @@ class StateMachine(object):
             self._at_start = True
 
         self._at_end = False
+        print(self._curr_state)
+
+    @property
+    def at_start(self):
+        return self._at_start
 
     @property
     def at_end(self):
@@ -61,7 +68,7 @@ class StateMachine(object):
 
     @property
     def curr_line(self):
-        line, _ = self._exec_state_diffs[self._exec_point]
+        line, _ = self.curr_diff
         return line
 
     @property

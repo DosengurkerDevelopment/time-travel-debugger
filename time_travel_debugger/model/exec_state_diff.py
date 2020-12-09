@@ -16,7 +16,7 @@ class Action(Enum):
 class ExecStateDiff(object):
     ''' Model for saving differences between states of executions '''
 
-   def __init__(self):
+    def __init__(self):
         self._function_states = []
         self._action = None
 
@@ -74,8 +74,6 @@ class ExecStateDiff(object):
     @property
     def depth(self):
         return len(self._function_states) - 1
-
-
 
 
 class FunctionStateDiff(object):
