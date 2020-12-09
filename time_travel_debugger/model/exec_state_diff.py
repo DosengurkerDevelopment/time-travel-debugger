@@ -64,7 +64,8 @@ class ExecStateDiff(object):
 
     @property
     def changed(self):
-        return {**self.added, **self.updated}
+        # TODO: this can be done more efficiently i think
+        return {**self.added, **{k: v.after for (k, v) in self.updated.items()}}
 
     @property
     def file_name(self):

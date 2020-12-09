@@ -40,9 +40,8 @@ class StateMachine(object):
 
         # Check whether we reached the start of the program
         if self._exec_point > 0:
-            diff = deepcopy(self.curr_diff)
+            diff = deepcopy(self._exec_state_diffs[self._exec_point])
             self._exec_point -= 1
-            print(diff)
             # rewind updated vars
             self._curr_state.update(diff.changed)
             # delete added vars
