@@ -25,13 +25,13 @@ class StateMachine(object):
         if self._exec_point < len(self._exec_state_diffs) - 1:
             self._exec_point += 1
             diff = deepcopy(self.curr_diff)
-            print(diff)
+            #  print(diff)
             self._curr_state.update(diff.changed)
             self._at_end = False
         else:
             self._at_end = True
         self._at_start = False
-        print(self._curr_state)
+        #  print(self._curr_state)
 
     def backward(self):
         '''
@@ -55,7 +55,7 @@ class StateMachine(object):
             self._at_start = True
 
         self._at_end = False
-        print(self._curr_state)
+        #  print(self._curr_state)
 
     @property
     def at_start(self):
@@ -67,7 +67,7 @@ class StateMachine(object):
 
     @property
     def curr_line(self):
-        line, _ = self.curr_diff
+        line = self.curr_diff.lineno
         return line
 
     @property
@@ -118,11 +118,11 @@ class DebuggerContext(object):
 
     @property
     def at_start(self):
-        return self._at_start
+        return self._state_machine.at_start
 
     @property
     def at_end(self):
-        return self._at_end
+        return self._state_machine.at_end
 
     @property
     def curr_state(self):

@@ -168,8 +168,8 @@ class TimeTravelDebugger(object):
 
     def previous_command(self, arg=""):
         ''' Step to the previous source line '''
-        target = self._context.curr_line - 1
-        while not (self._context.is_at_line(target) or self._context.at_start):
+        target = self._context.curr_line -1
+        while not(self._context.is_at_line(target) or self._context.at_start):
             self._context.step_backward()
         self.stepping = True
 
