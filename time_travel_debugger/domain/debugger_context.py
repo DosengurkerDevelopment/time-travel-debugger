@@ -1,4 +1,5 @@
 from typing import List
+from ..model.watchpoint import Watchpoint
 from ..model.breakpoint import Breakpoint
 from ..model.exec_state_diff import ExecStateDiff, Action
 from copy import deepcopy
@@ -87,6 +88,7 @@ class DebuggerContext(object):
         self._stepping = True
 
         self._breakpoints = []
+        self._watchpoints = []
 
     def stop_here(self):
         ''' Method to determine whether we need to stop at the current step
@@ -110,6 +112,10 @@ class DebuggerContext(object):
     @property
     def breakpoints(self):
         return self._breakpoints
+
+    @property
+    def watchpoints(self):
+        return self._watchpoints
 
     @property
     def at_start(self):
@@ -156,8 +162,17 @@ class DebuggerContext(object):
         while not self._state_machine.at_end:
             #  Assemble the vars of the current state of the program
             if self.stop_here():
+                state = self._state_machine.curr_state
+
+                updated_watchpoints = []
+
+                for wp in self.watchpoints:
+                    if wp.has_changed(state):
+                        (old, new) = wp.update(state)
+                        updated_watchpoints.append((wp.var_name, old, new))
+
                 # Get a command
-                exec_command(get_command(), self._state_machine.curr_state)
+                exec_command(get_command(), state, updated_watchpoints)
 
     def step_forward(self):
         ''' Step forward one instruction at a time '''
@@ -177,9 +192,9 @@ class DebuggerContext(object):
 
     def previous(self):
         # TODO: check if previous line is executable at all
-        target = self._state_machine.curr_line -1
-        while not(self._state_machine.curr_line == target\
-                or self._state_machine.at_end):
+        target = self._state_machine.curr_line - 1
+        while not(self._state_machine.curr_line == target
+                  or self._state_machine.at_end):
             self._state_machine.backward()
         self.stepping = True
 
@@ -220,7 +235,8 @@ class DebuggerContext(object):
         if bp_type != Breakpoint.FUNC:
             location = int(location)
 
-            # Find the code object corresponding to this line number and filename
+            # Find the code object corresponding to this line number and
+            # filename
             for source in self._source_map.values():
                 if source['filename'] == filename:
                     starting_line = source['start']
@@ -239,7 +255,6 @@ class DebuggerContext(object):
 
                     break
             else:
-                # TODO: What to do if we can't find a matching code object ?
                 return None
 
         new_bp = Breakpoint(next_bp_id, location, filename, bp_type, cond)
@@ -250,11 +265,48 @@ class DebuggerContext(object):
         b = self.get_breakpoint(id)
         if b is not None:
             self.breakpoints.remove(b)
+            return True
+        return False
 
     def disable_breakpoint(self, id):
         breakpoint = self.get_breakpoint(id)
-        breakpoint.disable()
+        if breakpoint is not None:
+            breakpoint.disable()
+            return True
+        return False
 
     def enable_breakpoint(self, id):
         breakpoint = self.get_breakpoint(id)
-        breakpoint.enable()
+        if breakpoint is not None:
+            breakpoint.enable()
+            return True
+        return False
+
+    def get_watchpoint(self, id):
+        for b in self.watchpoints:
+            if b.id == id:
+                return b
+        return None
+
+    def add_watchpoint(self, var_name):
+        # Find next breakpoint id
+        if not self.watchpoints:
+            next_wp_id = 1
+        else:
+            next_wp_id = max([b.id for b in self.watchpoints]) + 1
+
+        if var_name in self.curr_state:
+            initial_value = self.curr_state[var_name]
+        else:
+            initial_value = None
+
+        new_wp = Watchpoint(next_wp_id, var_name, initial_value)
+        self.watchpoints.append(new_wp)
+        return new_wp
+
+    def remove_watchpoint(self, id):
+        b = self.get_watchpoint(id)
+        if b is not None:
+            self.breakpoints.remove(b)
+            return True
+        return False

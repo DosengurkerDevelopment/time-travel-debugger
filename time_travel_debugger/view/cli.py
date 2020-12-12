@@ -48,7 +48,7 @@ class TimeTravelDebugger(object):
             self._last_command = cmd
             return cmd
 
-    def execute(self, command, current_state):
+    def execute(self, command, current_state, updates):
         self._current_state = current_state
         sep = command.find(' ')
         if sep > 0:
@@ -57,6 +57,9 @@ class TimeTravelDebugger(object):
         else:
             cmd = command.strip()
             arg = ""
+
+        for (var, old, new) in updates:
+            print(f"Changed {var}: {old} -> {new}")
 
         method = self.command_method(cmd)
         if method:
@@ -210,11 +213,27 @@ class TimeTravelDebugger(object):
 
     def watch_command(self, arg=""):
         ''' Insert a watchpoint '''
-        pass
+        if not arg:
+            table_template = "{:^15}|{:^6}"
+            header = table_template.format("id", "watched variable")
+
+            print(header)
+            print('-'*len(header))
+            for wp in self._context.watchpoints:
+                print(table_template.format(*wp))
+        else:
+            res = self._context.add_watchpoint(arg)
+            if not res:
+                print("Could not add watchpoint.")
+            else:
+                print(f"Added watchpoint with id {res.id}.")
 
     def unwatch_command(self, arg=""):
         ''' Remove a watchpoint '''
-        pass
+        if not self._context.remove_watchpoint(arg):
+            print(f"Watchpoint with id {arg} does not exists.")
+        else:
+            print(f"Successfully removed watchpoint {arg}")
 
     def break_command(self, arg=""):
         ''' Insert a breakpoint at the given location '''
