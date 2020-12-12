@@ -1,4 +1,5 @@
 from typing import List, Dict, Any
+import os
 import inspect
 import collections
 from enum import Enum
@@ -82,7 +83,7 @@ class FunctionStateDiff(object):
     def __init__(self, frame):
         # Hash of the frame this diff belongs to
         self._frame = hash(frame)
-        self._file_name = inspect.getfile(frame)
+        self._file_name = os.path.basename(inspect.getfile(frame))
         self._func_name = frame.f_code.co_name
         # Line number of the diff
         self._lineno = frame.f_lineno

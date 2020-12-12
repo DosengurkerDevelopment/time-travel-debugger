@@ -212,11 +212,11 @@ class DebuggerContext(object):
                     break
             else:
                 # TODO: What to do if we can't find a matching code object ?
-                return False
+                return None
 
         new_bp = Breakpoint(next_bp_id, location, filename, bp_type, cond)
         self.breakpoints.append(new_bp)
-        return True
+        return new_bp
 
     def remove_breakpoint(self, id):
         b = self.get_breakpoint(id)
