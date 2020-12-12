@@ -1,6 +1,6 @@
 from typing import List
 from ..model.breakpoint import Breakpoint
-from ..model.exec_state_diff import ExecStateDiff
+from ..model.exec_state_diff import ExecStateDiff, Action
 from copy import deepcopy
 
 
@@ -150,7 +150,7 @@ class DebuggerContext(object):
         else:
             return self.is_at_line(bp.location)
 
-    def start(self, get_command, exec_command):
+    def start_debugger(self, get_command, exec_command):
         ''' Interaction loop that is run after the execution of the code inside
         the with block is finished '''
         while not self._state_machine.at_end:
@@ -168,6 +168,7 @@ class DebuggerContext(object):
         self._state_machine.backward()
 
     def next(self):
+        # TODO: check if next line is executable at all
         target = self._state_machine.curr_line + 1
         while not(self._state_machine.curr_line == target
                   or self._state_machine.at_end):
@@ -175,11 +176,30 @@ class DebuggerContext(object):
         self.stepping = True
 
     def previous(self):
-        target = self._state_machine.curr_line - 1
-        while not(self._state_machine.curr_line == target
-                  or self._state_machine.at_end):
+        # TODO: check if previous line is executable at all
+        target = self._state_machine.curr_line -1
+        while not(self._state_machine.curr_line == target\
+                or self._state_machine.at_end):
             self._state_machine.backward()
         self.stepping = True
+
+    def finish(self):
+        while self._state_machine.curr_diff.action != Action.RET\
+                or self._state_machine.at_end:
+            self._state_machine.forward()
+
+    def start(self):
+        while self._state_machine.curr_diff.action != Action.CALL\
+                or self._state_machine.at_start:
+            self._state_machine.backward()
+
+    def continue_(self):
+        while not (self.break_at_current() or self._state_machine.at_end):
+            self._state_machine.forward()
+
+    def reverse(self):
+        while not (self.break_at_current() or self._state_machine.at_start):
+            self._state_machine.backward()
 
     def get_breakpoint(self, id):
         for b in self.breakpoints:

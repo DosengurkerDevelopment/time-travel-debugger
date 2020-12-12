@@ -37,7 +37,7 @@ class TimeTravelDebugger(object):
         readline.set_completer(self._completer.complete)
         readline.parse_and_bind('tab: complete')
         self._context = DebuggerContext(diffs, source_map)
-        self._context.start(
+        self._context.start_debugger(
             self.get_input, self.execute)
 
     def get_input(self):
@@ -173,10 +173,12 @@ class TimeTravelDebugger(object):
         self._context.previous()
 
     def finish_command(self, arg=""):
-        ''' Finsh the current function execution '''
-        while not self._context.curr_diff.action == Action.RET:
-            self._context.step()
-        pass
+        ''' Finish the current function execution '''
+        self._context.finish()
+
+    def start_command(self, arg=""):
+        ''' Go to start of the current function call '''
+        self._context.start()
 
     def until_command(self, arg=""):
         ''' Execute forward until a given point '''
@@ -188,13 +190,11 @@ class TimeTravelDebugger(object):
 
     def continue_command(self, arg=""):
         ''' Continue execution forward until a breakpoint is hit '''
-        while not (self._context.break_at_current() or self._context.at_end):
-            self._context.step_forward()
+        self._context.continue_()
 
     def reverse_command(self, arg=""):
         ''' Continue execution backward until a breakpoint is hit '''
-        while not (self._context.break_at_current() or self._context.at_start):
-            self._context.step_backward()
+        self._context.reverse()
 
     def where_command(self, arg=""):
         ''' Print the call stack '''
