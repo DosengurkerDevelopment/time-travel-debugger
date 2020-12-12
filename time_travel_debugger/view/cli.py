@@ -173,7 +173,7 @@ class TimeTravelDebugger(object):
             self._context.step_backward()
         self.stepping = True
 
-    def finish_commmand(self):
+    def finish_commmand(self, arg=""):
         ''' Finsh the current function execution '''
         pass
 
@@ -199,11 +199,11 @@ class TimeTravelDebugger(object):
         ''' Print the call stack '''
         pass
 
-    def up_command(self):
+    def up_command(self, arg=""):
         ''' Move up the call stack '''
         pass
 
-    def down_command(self):
+    def down_command(self, arg=""):
         ''' Move down the call stack '''
         pass
 
@@ -228,7 +228,7 @@ class TimeTravelDebugger(object):
             filename, function_name = arg.split(':')
             self._context.add_breakpoint(function_name, filename, "func")
 
-    def breakpoints_command(self):
+    def breakpoints_command(self, arg=""):
         ''' List all breakpoints '''
         table_template = "{:^15}|{:^6}|{:^20}|{:^15}|{:^20}"
         header = table_template.format('id', 'type',

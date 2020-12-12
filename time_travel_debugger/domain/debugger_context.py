@@ -67,8 +67,7 @@ class StateMachine(object):
 
     @property
     def curr_line(self):
-        line, _ = self.curr_diff
-        return line
+        return self.curr_diff.lineno
 
     @property
     def curr_diff(self):
@@ -118,20 +117,17 @@ class DebuggerContext(object):
 
     @property
     def at_start(self):
-        return self._at_start
+        return self._state_machine.at_start
 
     @property
     def at_end(self):
-        return self._at_end
+        return self._state_machine.at_end
 
     @property
     def curr_state(self):
         return self._state_machine.curr_state
 
-    def find_line_break(self, line, filename):
-        pass
-
-    def break_here(self):
+    def break_at_current(self):
         for bp in self.breakpoints:
             if self.is_at_breakpoint(bp) and bp.eval_condition(self.curr_state):
                 return True
