@@ -37,10 +37,9 @@ class ExecStateDiff(object):
         return self
 
     def __str__(self):
-        return f"\t{self._action} \t- {self._function_states}\n"
+        return f"{self._action} \t- {self._function_states}\n"
 
-    def __repr__(self):
-        return str(self)
+    __repr__ = __str__
 
     @property
     def action(self):

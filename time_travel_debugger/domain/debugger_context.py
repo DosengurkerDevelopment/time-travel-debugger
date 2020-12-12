@@ -3,11 +3,11 @@ from ..model.breakpoint import Breakpoint
 from ..model.exec_state_diff import ExecStateDiff
 from copy import deepcopy
 
-# Contains the absolute state of all defined variables of all currently active
-# functions
-
 
 class StateMachine(object):
+    ''' Contains the absolute state of all defined variables of all currently active
+        functions '''
+
     def __init__(self, diffs):
         self._exec_state_diffs = diffs
         self._curr_state = {}
@@ -18,25 +18,21 @@ class StateMachine(object):
         self._at_end = False
 
     def forward(self):
-        '''
-        steps one step forward if possible and computes the current state
-        '''
+        ''' steps one step forward if possible and computes the current state '''
 
         if self._exec_point < len(self._exec_state_diffs) - 1:
             self._exec_point += 1
             diff = deepcopy(self.curr_diff)
-            print(diff)
+            #  print(diff)
             self._curr_state.update(diff.changed)
             self._at_end = False
         else:
             self._at_end = True
         self._at_start = False
-        print(self._curr_state)
+        #  print(self._curr_state)
 
     def backward(self):
-        '''
-        steps one step backwards if possible and computes the current state
-        '''
+        ''' steps one step backwards if possible and computes the current state '''
 
         # Check whether we reached the start of the program
         if self._exec_point > 0:
@@ -55,7 +51,7 @@ class StateMachine(object):
             self._at_start = True
 
         self._at_end = False
-        print(self._curr_state)
+        #  print(self._curr_state)
 
     @property
     def at_start(self):
@@ -162,6 +158,20 @@ class DebuggerContext(object):
     def step_backward(self):
         ''' Step backward one step at a time '''
         self._state_machine.backward()
+
+    def next(self):
+        target = self._state_machine.curr_line + 1
+        while not(self._state_machine.curr_line == target
+                  or self._state_machine.at_end):
+            self._state_machine.forward()
+        self.stepping = True
+
+    def previous(self):
+        target = self._state_machine.curr_line - 1
+        while not(self._state_machine.curr_line == target
+                  or self._state_machine.at_end):
+            self._state_machine.backward()
+        self.stepping = True
 
     def get_breakpoint(self, id):
         for b in self.breakpoints:
