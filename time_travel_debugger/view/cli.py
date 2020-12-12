@@ -141,23 +141,25 @@ class TimeTravelDebugger(object):
         """Show current function. If arg is given, show its source code."""
         display_current_line = self._context.curr_line
         if arg:
+            # TODO: This does not work as intended
             try:
-                obj = eval(arg)
-                source_lines, line_number = inspect.getsourcelines(obj)
+                code = self._context._source_map[arg]
+                source_lines = code['code']
+                line_number = code['start']
             except Exception as err:
                 self.log(f"{err.__class__.__name__}: {err}")
                 return
             display_current_line = -1
         else:
-            # TODO: replace self.code with the correct code object from the
-            # source map
-            source_lines, line_number = inspect.getsourcelines(self.code)
+            code = self._context._source_map[self._context.curr_diff.func_name]
+            source_lines = code['code']
+            line_number = code['start']
 
         for line in source_lines:
             spacer = ' '
             if line_number == display_current_line:
                 spacer = '>'
-            elif self._context.is_breakpoint(line_number):
+            elif self._context.is_line_breakpoint(line_number):
                 spacer = '#'
             self.log(f'{line_number:4}{spacer} {line}', end='')
             line_number += 1

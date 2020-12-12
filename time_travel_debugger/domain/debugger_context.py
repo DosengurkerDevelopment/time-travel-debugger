@@ -129,6 +129,14 @@ class DebuggerContext(object):
                 return True
         return False
 
+    def is_line_breakpoint(self, line):
+        for bp in self.breakpoints:
+            if bp.breakpoint_type == Breakpoint.FUNC:
+                continue
+            if bp.location == line:
+                return True
+        return False
+
     def is_at_line(self, line):
         return self.curr_line == line
 
@@ -136,7 +144,7 @@ class DebuggerContext(object):
         return self.curr_diff.func_name == func \
             and self.curr_diff.file_name == file
 
-    def is_at_breakpoint(self, bp):
+    def is_at_breakpoint(self, bp: Breakpoint):
         if bp.breakpoint_type == Breakpoint.FUNC:
             return self.is_in_function(bp.location, bp.filename)
         else:
