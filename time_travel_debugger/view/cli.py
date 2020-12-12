@@ -161,20 +161,16 @@ class TimeTravelDebugger(object):
 
     def next_command(self, arg=""):
         ''' Step to the next source line '''
-        target = self._context.curr_line + 1
-        while not(self._context.is_at_line(target) or self._context.at_end):
-            self._context.step_forward()
-        self.stepping = True
+        self._context.next()
 
     def previous_command(self, arg=""):
         ''' Step to the previous source line '''
-        target = self._context.curr_line -1
-        while not(self._context.is_at_line(target) or self._context.at_start):
-            self._context.step_backward()
-        self.stepping = True
+        self._context.previous()
 
     def finish_commmand(self):
         ''' Finsh the current function execution '''
+        while not self._context.curr_diff.action == Action.RET:
+            self._context.step()
         pass
 
     def until_command(self, arg=""):

@@ -167,6 +167,20 @@ class DebuggerContext(object):
         ''' Step backward one step at a time '''
         self._state_machine.backward()
 
+    def next(self):
+        target = self._state_machine.curr_line + 1
+        while not(self._state_machine.curr_line == target\
+                or self._state_machine.at_end):
+            self._state_machine.forward()
+        self.stepping = True
+
+    def previous(self):
+        target = self._state_machine.curr_line -1
+        while not(self._state_machine.curr_line == target\
+                or self._state_machine.at_end):
+            self._state_machine.backward()
+        self.stepping = True
+
     def get_breakpoint(self, id):
         for b in self.breakpoints:
             if b.id == id:
