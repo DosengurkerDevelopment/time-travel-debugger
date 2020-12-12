@@ -185,6 +185,14 @@ class DebuggerContext(object):
                 or self._state_machine.at_start:
             self._state_machine.backward()
 
+    def continue_(self):
+        while not (self.break_at_current() or self._state_machine.at_end):
+            self._state_machine.forward()
+
+    def reverse(self):
+        while not (self.break_at_current() or self._state_machine.at_start):
+            self._state_machine.backward()
+
     def get_breakpoint(self, id):
         for b in self.breakpoints:
             if b.id == id:

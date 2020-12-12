@@ -171,7 +171,7 @@ class TimeTravelDebugger(object):
         self._context.previous()
 
     def finish_command(self, arg=""):
-        ''' Finsh the current function execution '''
+        ''' Finish the current function execution '''
         self._context.finish()
 
     def start_command(self, arg=""):
@@ -188,13 +188,11 @@ class TimeTravelDebugger(object):
 
     def continue_command(self, arg=""):
         ''' Continue execution forward until a breakpoint is hit '''
-        while not (self._context.break_at_current() or self._context.at_end):
-            self._context.step_forward()
+        self._context.continue_()
 
     def reverse_command(self, arg=""):
         ''' Continue execution backward until a breakpoint is hit '''
-        while not (self._context.break_at_current() or self._context.at_start):
-            self._context.step_backward()
+        self._context.reverse()
 
     def where_command(self, arg=""):
         ''' Print the call stack '''
