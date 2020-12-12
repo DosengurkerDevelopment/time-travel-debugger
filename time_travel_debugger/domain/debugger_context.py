@@ -3,11 +3,11 @@ from ..model.breakpoint import Breakpoint
 from ..model.exec_state_diff import ExecStateDiff, Action
 from copy import deepcopy
 
-# Contains the absolute state of all defined variables of all currently active
-# functions
-
 
 class StateMachine(object):
+    ''' Contains the absolute state of all defined variables of all currently active
+        functions '''
+
     def __init__(self, diffs):
         self._exec_state_diffs = diffs
         self._curr_state = {}
@@ -18,9 +18,7 @@ class StateMachine(object):
         self._at_end = False
 
     def forward(self):
-        '''
-        steps one step forward if possible and computes the current state
-        '''
+        ''' steps one step forward if possible and computes the current state '''
 
         if self._exec_point < len(self._exec_state_diffs) - 1:
             self._exec_point += 1
@@ -34,9 +32,7 @@ class StateMachine(object):
         #  print(self._curr_state)
 
     def backward(self):
-        '''
-        steps one step backwards if possible and computes the current state
-        '''
+        ''' steps one step backwards if possible and computes the current state '''
 
         # Check whether we reached the start of the program
         if self._exec_point > 0:
@@ -67,8 +63,7 @@ class StateMachine(object):
 
     @property
     def curr_line(self):
-        line = self.curr_diff.lineno
-        return line
+        return self.curr_diff.lineno
 
     @property
     def curr_diff(self):
@@ -128,10 +123,7 @@ class DebuggerContext(object):
     def curr_state(self):
         return self._state_machine.curr_state
 
-    def find_line_break(self, line, filename):
-        pass
-
-    def break_here(self):
+    def break_at_current(self):
         for bp in self.breakpoints:
             if self.is_at_breakpoint(bp) and bp.eval_condition(self.curr_state):
                 return True
@@ -170,8 +162,8 @@ class DebuggerContext(object):
     def next(self):
         # TODO: check if next line is executable at all
         target = self._state_machine.curr_line + 1
-        while not(self._state_machine.curr_line == target\
-                or self._state_machine.at_end):
+        while not(self._state_machine.curr_line == target
+                  or self._state_machine.at_end):
             self._state_machine.forward()
         self.stepping = True
 
@@ -232,11 +224,11 @@ class DebuggerContext(object):
                     break
             else:
                 # TODO: What to do if we can't find a matching code object ?
-                return False
+                return None
 
         new_bp = Breakpoint(next_bp_id, location, filename, bp_type, cond)
         self.breakpoints.append(new_bp)
-        return True
+        return new_bp
 
     def remove_breakpoint(self, id):
         b = self.get_breakpoint(id)

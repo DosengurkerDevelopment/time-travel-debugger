@@ -28,11 +28,12 @@ class Breakpoint(object):
         self._bp_type = bp_type
 
     def __iter__(self):
-        return iter((self.id, self.breakpoint_type, self.abs_location, self.status, self.condition))
+        return iter((self.id, self.breakpoint_type, self.abs_location,
+                     self.status, self.condition))
 
     def eval_condition(self, context):
-        ''' Evaluate the condition given in the constructor in the given context.
-            Always returns True if no condition was given.  '''
+        ''' Evaluate the condition given in the constructor in the given
+        context.  Always returns True if no condition was given.  '''
         if self._active:
             if not self._condition:
                 # We do not have a condition, so we always break
@@ -49,12 +50,16 @@ class Breakpoint(object):
         self._active = False
 
     @property
+    def is_active(self):
+        return self._active
+
+    @property
     def id(self):
         return self._id
 
     @property
     def status(self):
-        return "active" if self._active else "not active"
+        return "active" if self.is_active else "not active"
 
     @property
     def location(self):

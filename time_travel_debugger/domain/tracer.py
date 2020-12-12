@@ -1,6 +1,6 @@
 import inspect
 import sys
-import linecache
+import os
 from copy import deepcopy
 from typing import List
 
@@ -44,7 +44,7 @@ class TimeTravelTracer(object):
         return changed
 
     def _do_return(self):
-        assert len(self._last_vars )> 0
+        assert len(self._last_vars) > 0
         self._last_vars.pop()
         new_state = self._current_diff.ret()
         self._last_frame = new_state.func_name
@@ -95,13 +95,13 @@ class TimeTravelTracer(object):
 
         # collect the code in a source_map, so we can print it later in the
         # debugger
-        filename = inspect.getsourcefile(frame.f_code)
+        filename = os.path.basename(inspect.getsourcefile(frame.f_code))
         code, startline = inspect.getsourcelines(frame.f_code)
         if frame.f_code.co_name not in self._source_map:
-            self._source_map[frame.f_code.co_name] = {\
+            self._source_map[frame.f_code.co_name] = {
                 "start": startline, "code": code, "filename": filename}
             if frame.f_lineno == startline:
-            # first call of traceit in current frame should be ignored
+                # first call of traceit in current frame should be ignored
                 return self._traceit
         line_code = code[frame.f_lineno - startline]
         #  print(f"current_function: { frame.f_code.co_name }")
@@ -111,7 +111,7 @@ class TimeTravelTracer(object):
             # we executed the statement before return, so we can return
             print("return")
             self._should_return = False
-            new_state =  self._do_return()
+            new_state = self._do_return()
         # check if last action was a return statement
         # in that case don't do call, since we step back in to previous frame
         elif self._last_action != Action.RET\

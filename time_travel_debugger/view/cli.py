@@ -8,6 +8,9 @@ from ..domain.tracer import TimeTravelTracer
 from ..domain.debugger_context import DebuggerContext
 from .completer import CLICompleter
 
+# TODO: Signal handling on Ctrl-C, Ctrl-D
+# TODO: Error handling
+
 
 class TimeTravelDebugger(object):
     ''' Command line debugger that supports stepping backwards in time. '''
@@ -197,11 +200,11 @@ class TimeTravelDebugger(object):
         ''' Print the call stack '''
         pass
 
-    def up_command(self):
+    def up_command(self, arg=""):
         ''' Move up the call stack '''
         pass
 
-    def down_command(self):
+    def down_command(self, arg=""):
         ''' Move down the call stack '''
         pass
 
@@ -215,18 +218,25 @@ class TimeTravelDebugger(object):
 
     def break_command(self, arg=""):
         ''' Insert a breakpoint at the given location '''
+        res = None
         # Find out which type of breakpoint we want to insert
         if arg.isnumeric():
             # Line breakpoint
-            self._context.add_breakpoint(arg, "line")
+            res = self._context.add_breakpoint(arg, "line")
         elif ':' not in arg:
             # Function breakpoint for different file
-            self._context.add_breakpoint(arg, "func")
+            res = self._context.add_breakpoint(arg, "func")
         else:
             filename, function_name = arg.split(':')
-            self._context.add_breakpoint(function_name, filename, "func")
+            res = self._context.add_breakpoint(
+                function_name, "func", filename=filename)
 
-    def breakpoints_command(self):
+        if res is not None:
+            print(f"Breakpoint {res.id} added.")
+        else:
+            print("Could not add breakpoint.")
+
+    def breakpoints_command(self, arg=""):
         ''' List all breakpoints '''
         table_template = "{:^15}|{:^6}|{:^20}|{:^15}|{:^20}"
         header = table_template.format('id', 'type',
