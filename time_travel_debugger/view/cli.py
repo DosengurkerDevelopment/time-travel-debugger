@@ -38,7 +38,7 @@ class TimeTravelCLI(object):
         readline.set_completer(self._completer.complete)
         readline.parse_and_bind('tab: complete')
         #  print(diffs)
-        self._debugger = TimeTravelDebugger(diffs,source_map)
+        self._debugger = TimeTravelDebugger(diffs, source_map)
         self._debugger.start_debugger(self.get_input, self.execute)
 
     def get_input(self):
@@ -62,14 +62,14 @@ class TimeTravelCLI(object):
         for (var, old, new) in updates:
             print(f"Changed {var}: {old} -> {new}")
 
-        code = self._context._source_map[self._context.curr_diff.func_name]
+        code = self._debugger._source_map[self._debugger.curr_diff.func_name]
         start_line = code['start']
         # TODO: Need to check whether this is in range
-        code_line = code['code'][self._context.curr_line - start_line + 1]
+        code_line = code['code'][self._debugger.curr_line - start_line]
 
-        print(self._context.curr_line + 1, code_line.strip())
+        print(self._debugger.curr_line, code_line.strip())
 
-        if self._context.break_at_current():
+        if self._debugger.break_at_current():
             print('Breakpoint hit!')
 
         method = self.command_method(cmd)
