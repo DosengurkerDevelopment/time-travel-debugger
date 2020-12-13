@@ -10,8 +10,10 @@ class StateMachine(object):
 
     def __init__(self, diffs):
         self._exec_state_diffs = diffs
-        self._curr_state = {}
-        self._exec_point = 0
+        self._curr_states = [{}] 
+        self._curr_state_ptr = 0
+        #  start at -1 and step into first diff in start_debugger
+        self._exec_point = -1 
         # True if we are at the start of the current frame
         self._at_start = True
         # True if we are the end of the current frame
@@ -21,13 +23,25 @@ class StateMachine(object):
         ''' steps one step forward if possible and computes the current state '''
 
         if self._exec_point < len(self._exec_state_diffs) - 1:
+            prev_depth = self.curr_diff.depth
             self._exec_point += 1
             diff = deepcopy(self.curr_diff)
-            #  print(diff)
-            self._curr_state.update(diff.changed)
+            print(diff)
+            if diff.depth > prev_depth :
+                # called new function, so create new absolute state with added
+                # variables (parameters)
+                self._curr_states.append(diff.added.copy())
+                self._curr_state_ptr += 1
+            elif diff.depth < prev_depth:
+                # returned from function, so return to previous absolute state
+                self._curr_state_ptr -= 1
+            else:
+                # depth stayed the same, so just update the state
+                self.curr_state.update(diff.changed)
             self._at_end = False
         else:
-            self._at_end = True
+            if self._exec_point < len(self._exec_state_diffs):
+                self._at_end = True
         self._at_start = False
         #  print(self._curr_state)
 
@@ -37,18 +51,34 @@ class StateMachine(object):
         # Check whether we reached the start of the program
         if self._exec_point > 0:
             diff = deepcopy(self._exec_state_diffs[self._exec_point])
+            print(diff)
             self._exec_point -= 1
-            # rewind updated vars
-            self._curr_state.update(diff.changed)
-            # delete added vars
-            for k in diff.added:
-                try:
-                    self._curr_state.pop(k)
-                except KeyError:
-                    pass
+            depth_after = self.curr_diff.depth
+            if diff.depth > depth_after :
+                # called new function previously, so rewind by deleting current
+                # context (which is safe, since when going forward we will
+                # recreate it)
+                self._curr_states.pop()
+                self._curr_state_ptr -= 1
+            elif diff.depth < depth_after:
+                # returned from function previously, so go to
+                # absolute state one scope higher (which exists, since we rewind
+                # in history, so we have created this scope in a previous
+                # execution)
+                self._curr_state_ptr += 1
+            else:
+                # depth stayed the same, so rewind updated vars
+                self.curr_state.update(diff.changed)
+                # and delete added vars
+                for k in diff.added:
+                    try:
+                        self.curr_state.pop(k)
+                    except KeyError:
+                        pass
             self._at_start = False
         else:
-            self._at_start = True
+            if self._exec_point == 0:
+                self._at_start = True
 
         self._at_end = False
         #  print(self._curr_state)
@@ -72,8 +102,11 @@ class StateMachine(object):
 
     @property
     def curr_state(self):
-        return self._curr_state
+        return self._curr_states[self._curr_state_ptr]
 
+    @property
+    def curr_depth(self):
+        return self._curr_state_ptr
 
 class DebuggerContext(object):
 
@@ -153,6 +186,9 @@ class DebuggerContext(object):
     def start_debugger(self, get_command, exec_command):
         ''' Interaction loop that is run after the execution of the code inside
         the with block is finished '''
+        # since we start at exec_point we have to step once to start at the
+        # correct point and update the UI
+        exec_command("step", self._state_machine.curr_state)
         while not self._state_machine.at_end:
             #  Assemble the vars of the current state of the program
             if self.stop_here():
@@ -184,12 +220,20 @@ class DebuggerContext(object):
         self.stepping = True
 
     def finish(self):
-        while self._state_machine.curr_diff.action != Action.RET\
-                or self._state_machine.at_end:
+        curr_depth = self._state_machine.curr_depth
+        # only take in account return actions that happened in the same function
+        # (in the same depth)
+        while not( curr_depth == self._state_machine.curr_depth \
+                and self._state_machine.curr_diff.action == Action.RET )\
+                or not self._state_machine.at_end:
             self._state_machine.forward()
 
     def start(self):
-        while self._state_machine.curr_diff.action != Action.CALL\
+        curr_depth = self._state_machine.curr_depth
+        # only take in account return actions that happened in the same function
+        # (in the same depth)
+        while ( curr_depth == self._state_machine.curr_depth \
+                and self._state_machine.curr_diff.action != Action.RET )\
                 or self._state_machine.at_start:
             self._state_machine.backward()
 

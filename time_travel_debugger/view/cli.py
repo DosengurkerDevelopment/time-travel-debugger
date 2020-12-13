@@ -26,16 +26,17 @@ class TimeTravelDebugger(object):
         #  super().__init__(file)
 
     def __enter__(self, *args, **kwargs):
-        print("start tracing")
+        #  print("start tracing")
         self._tracer.set_trace()
 
     def __exit__(self, *args, **kwargs):
-        print("stop tracing")
+        #  print("stop tracing")
         diffs, source_map = self._tracer.get_trace()
-        print(diffs, source_map)
+        #  print(diffs, source_map)
         self._completer = CLICompleter(self.commands())
         readline.set_completer(self._completer.complete)
         readline.parse_and_bind('tab: complete')
+        #  print(diffs)
         self._context = DebuggerContext(diffs, source_map)
         self._context.start_debugger(
             self.get_input, self.execute)
@@ -140,6 +141,7 @@ class TimeTravelDebugger(object):
     def list_command(self, arg=""):
         """Show current function. If arg is given, show its source code."""
         display_current_line = self._context.curr_line
+        print(self._context.curr_diff.func_name)
         if arg:
             # TODO: This does not work as intended
             try:

@@ -6,11 +6,12 @@ def id(a):
     c = 12
     return a
 
-def call_id(a):
+def test1(a):
     x = 100
     while a > 5:
         id(a)
         a -= 1
+        x -= 1
     return
 
 def remove_html_markup(s):
@@ -33,4 +34,4 @@ def remove_html_markup(s):
 
 if __name__ == '__main__':
     with TimeTravelDebugger():
-        call_id(12)
+        test1(12)
