@@ -61,6 +61,16 @@ class TimeTravelDebugger(object):
         for (var, old, new) in updates:
             print(f"Changed {var}: {old} -> {new}")
 
+        code = self._context._source_map[self._context.curr_diff.func_name]
+        start_line = code['start']
+        # TODO: Need to check whether this is in range
+        code_line = code['code'][self._context.curr_line - start_line + 1]
+
+        print(self._context.curr_line + 1, code_line.strip())
+
+        if self._context.break_at_current():
+            print('Breakpoint hit!')
+
         method = self.command_method(cmd)
         if method:
             method(arg)

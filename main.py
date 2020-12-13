@@ -1,10 +1,12 @@
 import sys
 from time_travel_debugger.view.cli import TimeTravelDebugger
 
+
 def id(a):
     b = 1234
     c = 12
     return a
+
 
 def call_id(a):
     x = 100
@@ -12,6 +14,7 @@ def call_id(a):
         id(a)
         a -= 1
     return
+
 
 def remove_html_markup(s):
     tag = False
