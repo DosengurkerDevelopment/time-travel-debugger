@@ -11,8 +11,10 @@ class StateMachine(object):
 
     def __init__(self, diffs):
         self._exec_state_diffs = diffs
-        self._curr_state = {}
-        self._exec_point = 0
+        self._curr_states = [{}] 
+        self._curr_state_ptr = 0
+        #  start at -1 and step into first diff in start_debugger
+        self._exec_point = -1 
         # True if we are at the start of the current frame
         self._at_start = True
         # True if we are the end of the current frame
@@ -22,13 +24,29 @@ class StateMachine(object):
         ''' steps one step forward if possible and computes the current state '''
 
         if self._exec_point < len(self._exec_state_diffs) - 1:
+            prev_depth = self.curr_diff.depth
             self._exec_point += 1
             diff = deepcopy(self.curr_diff)
-            #  print(diff)
-            self._curr_state.update(diff.changed)
+            print(diff)
+            if diff.depth > prev_depth :
+                # called new function, so create new absolute state with added
+                # variables (parameters)
+                self._curr_states.append(diff.added.copy())
+                self._curr_state_ptr += 1
+            elif diff.depth < prev_depth:
+                # returned from function, so return to previous absolute state
+                # and step one further, since return statements dont do anything
+                self._curr_state_ptr -= 1
+                self._exec_point += 1
+                diff = deepcopy(self.curr_diff)
+            else:
+                # depth stayed the same, so just update the state
+                self.curr_state.update(diff.changed)
+
             self._at_end = False
         else:
-            self._at_end = True
+            if self._exec_point < len(self._exec_state_diffs):
+                self._at_end = True
         self._at_start = False
         #  print(self._curr_state)
 
@@ -38,18 +56,40 @@ class StateMachine(object):
         # Check whether we reached the start of the program
         if self._exec_point > 0:
             diff = deepcopy(self._exec_state_diffs[self._exec_point])
+            print(diff)
             self._exec_point -= 1
-            # rewind updated vars
-            self._curr_state.update(diff.changed)
-            # delete added vars
-            for k in diff.added:
-                try:
-                    self._curr_state.pop(k)
-                except KeyError:
-                    pass
+            depth_after = self.curr_diff.depth
+            if diff.depth > depth_after :
+                print("one scope lower")
+                # called new function previously, so rewind by deleting current
+                # context (which is safe, since when going forward we will
+                # recreate it)
+                self._curr_states.pop()
+                self._curr_state_ptr -= 1
+            elif diff.depth < depth_after:
+                print("one scope higher")
+                # returned from function previously, so go to
+                # absolute state one scope higher (which exists, since we rewind
+                # in history, so we have created this scope in a previous
+                # execution)
+                self._curr_state_ptr += 1
+            else:
+                # if previous action was return then step to return statement
+                # ,since we dont want to step back to the point after
+                # the function execution
+                if self.curr_diff.action == Action.RET:
+                    print("last return ")
+                    self._exec_point -= 1
+                    diff = deepcopy(self.curr_diff)
+                # depth stayed the same, so rewind updated vars
+                self.curr_state.update(diff.changed)
+                # and delete added vars
+                for k in diff.added:
+                    self.curr_state.pop(k)
             self._at_start = False
         else:
-            self._at_start = True
+            if self._exec_point == 0:
+                self._at_start = True
 
         self._at_end = False
         #  print(self._curr_state)
@@ -72,11 +112,30 @@ class StateMachine(object):
         return diff
 
     @property
+    def next_action(self):
+        try:
+            diff = self._exec_state_diffs[self._exec_point+1]
+            return diff.action
+        except:
+            return None
+
+    @property
+    def prev_action(self):
+        try:
+            diff = self._exec_state_diffs[self._exec_point-1]
+            return diff.action
+        except:
+            return None
+
+    @property
     def curr_state(self):
-        return self._curr_state
+        return self._curr_states[self._curr_state_ptr]
 
+    @property
+    def curr_depth(self):
+        return self._curr_state_ptr
 
-class DebuggerContext(object):
+class TimeTravelDebugger(object):
 
     def __init__(self, exec_state_diffs: List[ExecStateDiff], source_map):
         # Dictionary that contains source code objects for each frame
@@ -159,11 +218,12 @@ class DebuggerContext(object):
     def start_debugger(self, get_command, exec_command):
         ''' Interaction loop that is run after the execution of the code inside
         the with block is finished '''
-        while not self._state_machine.at_end:
+        # since we start at exec_point we have to step once to start at the
+        # correct point and update the UI
+        exec_command("step", self._state_machine.curr_state, [])
+        while True:
             #  Assemble the vars of the current state of the program
             if self.stop_here():
-                state = self._state_machine.curr_state
-
                 updated_watchpoints = []
 
                 for wp in self.watchpoints:
@@ -172,7 +232,7 @@ class DebuggerContext(object):
                         updated_watchpoints.append((wp.var_name, old, new))
 
                 # Get a command
-                exec_command(get_command(), state, updated_watchpoints)
+                exec_command(get_command(), self._state_machine.curr_state, updated_watchpoints)
 
     def step_forward(self):
         ''' Step forward one instruction at a time '''
@@ -199,13 +259,21 @@ class DebuggerContext(object):
         self.stepping = True
 
     def finish(self):
-        while self._state_machine.curr_diff.action != Action.RET\
-                or self._state_machine.at_end:
+        curr_depth = self._state_machine.curr_depth
+        # only take in account return actions that happened in the same function
+        # scope (in the same depth)
+        while not( curr_depth  == self._state_machine.curr_depth \
+                and self._state_machine.next_action == Action.RET )\
+                and not self._state_machine.at_end:
             self._state_machine.forward()
 
     def start(self):
-        while self._state_machine.curr_diff.action != Action.CALL\
-                or self._state_machine.at_start:
+        curr_depth = self._state_machine.curr_depth
+        # only take in account call actions that happened in one function
+        # scope lower
+        while not( curr_depth +1  == self._state_machine.curr_depth \
+                and self._state_machine.next_action == Action.CALL )\
+                and not self._state_machine.at_start:
             self._state_machine.backward()
 
     def continue_(self):
