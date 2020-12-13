@@ -130,6 +130,8 @@ class TimeTravelTracer(object):
                 # previous line yet
                 # so perform update and next round we can perform return
                 self._should_return = True
+            #  if self._last_action == Action.RET:
+                #  return self._traceit
             new_state = self._do_update(frame)
 
         #  print(f"last_vars {self._last_vars[-1]}")

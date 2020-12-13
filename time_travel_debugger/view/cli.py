@@ -5,14 +5,14 @@ import sys
 import readline
 
 from ..domain.tracer import TimeTravelTracer
-from ..domain.debugger_context import DebuggerContext
+from ..domain.debugger import TimeTravelDebugger
 from .completer import CLICompleter
 
 # TODO: Signal handling on Ctrl-C, Ctrl-D
 # TODO: Error handling
 
 
-class TimeTravelDebugger(object):
+class TimeTravelCLI(object):
     ''' Command line debugger that supports stepping backwards in time. '''
 
     def __init__(self, file=sys.stdout):
@@ -20,7 +20,7 @@ class TimeTravelDebugger(object):
         # exection step
         self._tracer = TimeTravelTracer()
         self._current_state = None
-        self._context = None
+        self._debugger = None
         self._file = file
         self._last_command = ''
         #  super().__init__(file)
@@ -32,14 +32,14 @@ class TimeTravelDebugger(object):
     def __exit__(self, *args, **kwargs):
         #  print("stop tracing")
         diffs, source_map = self._tracer.get_trace()
+        print(diffs)
         #  print(diffs, source_map)
         self._completer = CLICompleter(self.commands())
         readline.set_completer(self._completer.complete)
         readline.parse_and_bind('tab: complete')
         #  print(diffs)
-        self._context = DebuggerContext(diffs, source_map)
-        self._context.start_debugger(
-            self.get_input, self.execute)
+        self._debugger = TimeTravelDebugger(diffs,source_map)
+        self._debugger.start_debugger(self.get_input, self.execute)
 
     def get_input(self):
         cmd = input("(debugger) ")
@@ -135,20 +135,20 @@ class TimeTravelDebugger(object):
 
     def step_command(self, arg=""):
         ''' Step to the next instruction '''
-        self._context.step_forward()
+        self._debugger.step_forward()
 
     def backstep_command(self, arg=""):
         ''' Step to the previous instruction '''
-        self._context.step_backward()
+        self._debugger.step_backward()
 
     def list_command(self, arg=""):
         """Show current function. If arg is given, show its source code."""
-        display_current_line = self._context.curr_line
-        print(self._context.curr_diff.func_name)
+        display_current_line = self._debugger.curr_line
+        print(self._debugger.curr_diff.func_name)
         if arg:
             # TODO: This does not work as intended
             try:
-                code = self._context._source_map[arg]
+                code = self._debugger._source_map[arg]
                 source_lines = code['code']
                 line_number = code['start']
             except Exception as err:
@@ -156,7 +156,7 @@ class TimeTravelDebugger(object):
                 return
             display_current_line = -1
         else:
-            code = self._context._source_map[self._context.curr_diff.func_name]
+            code = self._debugger._source_map[self._debugger.curr_diff.func_name]
             source_lines = code['code']
             line_number = code['start']
 
@@ -164,26 +164,26 @@ class TimeTravelDebugger(object):
             spacer = ' '
             if line_number == display_current_line:
                 spacer = '>'
-            elif self._context.is_line_breakpoint(line_number):
+            elif self._debugger.is_line_breakpoint(line_number):
                 spacer = '#'
             self.log(f'{line_number:4}{spacer} {line}', end='')
             line_number += 1
 
     def next_command(self, arg=""):
         ''' Step to the next source line '''
-        self._context.next()
+        self._debugger.next()
 
     def previous_command(self, arg=""):
         ''' Step to the previous source line '''
-        self._context.previous()
+        self._debugger.previous()
 
     def finish_command(self, arg=""):
         ''' Finish the current function execution '''
-        self._context.finish()
+        self._debugger.finish()
 
     def start_command(self, arg=""):
         ''' Go to start of the current function call '''
-        self._context.start()
+        self._debugger.start()
 
     def until_command(self, arg=""):
         ''' Execute forward until a given point '''
@@ -195,11 +195,11 @@ class TimeTravelDebugger(object):
 
     def continue_command(self, arg=""):
         ''' Continue execution forward until a breakpoint is hit '''
-        self._context.continue_()
+        self._debugger.continue_()
 
     def reverse_command(self, arg=""):
         ''' Continue execution backward until a breakpoint is hit '''
-        self._context.reverse()
+        self._debugger.reverse()
 
     def where_command(self, arg=""):
         ''' Print the call stack '''
@@ -221,10 +221,10 @@ class TimeTravelDebugger(object):
 
             print(header)
             print('-'*len(header))
-            for wp in self._context.watchpoints:
+            for wp in self._debugger.watchpoints:
                 print(table_template.format(*wp))
         else:
-            res = self._context.add_watchpoint(arg)
+            res = self._debugger.add_watchpoint(arg)
             if not res:
                 print("Could not add watchpoint.")
             else:
@@ -232,7 +232,7 @@ class TimeTravelDebugger(object):
 
     def unwatch_command(self, arg=""):
         ''' Remove a watchpoint '''
-        if not self._context.remove_watchpoint(arg):
+        if not self._debugger.remove_watchpoint(arg):
             print(f"Watchpoint with id {arg} does not exists.")
         else:
             print(f"Successfully removed watchpoint {arg}")
@@ -243,13 +243,13 @@ class TimeTravelDebugger(object):
         # Find out which type of breakpoint we want to insert
         if arg.isnumeric():
             # Line breakpoint
-            res = self._context.add_breakpoint(arg, "line")
+            res = self._debugger.add_breakpoint(arg, "line")
         elif ':' not in arg:
             # Function breakpoint for different file
-            res = self._context.add_breakpoint(arg, "func")
+            res = self._debugger.add_breakpoint(arg, "func")
         else:
             filename, function_name = arg.split(':')
-            res = self._context.add_breakpoint(
+            res = self._debugger.add_breakpoint(
                 function_name, "func", filename=filename)
 
         if res is not None:
@@ -265,22 +265,22 @@ class TimeTravelDebugger(object):
 
         print(header)
         print('-'*len(header))
-        for bp in self._context.breakpoints:
+        for bp in self._debugger.breakpoints:
             print(table_template.format(*bp))
 
     def delete_command(self, arg=""):
         ''' Remove the given breakpoint '''
-        self._context.remove_breakpoint(int(arg))
+        self._debugger.remove_breakpoint(int(arg))
 
     def disable_command(self, arg=""):
         ''' Disable the given breakpoint '''
-        self._context.disable_breakpoint(int(arg))
+        self._debugger.disable_breakpoint(int(arg))
 
     def enable_command(self, arg=""):
         ''' Enable the given breakpoint '''
-        self._context.enable_breakpoint(int(arg))
+        self._debugger.enable_breakpoint(int(arg))
 
     def cond_command(self, arg=""):
         ''' Set a conditional breakpoint at the given location '''
         location, condition = arg.split()
-        self._context.add_breakpoint(location, "cond", cond=condition)
+        self._debugger.add_breakpoint(location, "cond", cond=condition)

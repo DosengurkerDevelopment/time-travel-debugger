@@ -1,5 +1,5 @@
 import sys
-from time_travel_debugger.view.cli import TimeTravelDebugger
+from time_travel_debugger.view.cli import TimeTravelCLI
 
 def id(a):
     b = 1234
@@ -33,5 +33,5 @@ def remove_html_markup(s):
 
 
 if __name__ == '__main__':
-    with TimeTravelDebugger():
+    with TimeTravelCLI():
         test1(12)
