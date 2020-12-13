@@ -27,7 +27,6 @@ class StateMachine(object):
             prev_depth = self.curr_diff.depth
             self._exec_point += 1
             diff = deepcopy(self.curr_diff)
-            print(diff)
             if diff.depth > prev_depth :
                 # called new function, so create new absolute state with added
                 # variables (parameters)
@@ -48,8 +47,6 @@ class StateMachine(object):
             if self._exec_point < len(self._exec_state_diffs):
                 self._at_end = True
         self._at_start = False
-        #  print(self._curr_state)
-        print(f"curr depth: {self.curr_depth}")
         assert self.curr_depth >= 0
 
     def backward(self):
@@ -58,18 +55,15 @@ class StateMachine(object):
         # Check whether we reached the start of the program
         if self._exec_point > 0:
             diff = deepcopy(self._exec_state_diffs[self._exec_point])
-            print(diff)
             self._exec_point -= 1
             depth_after = self.curr_diff.depth
             if diff.depth > depth_after :
-                print("one scope lower")
                 # called new function previously, so rewind by deleting current
                 # context (which is safe, since when going forward we will
                 # recreate it)
                 self._curr_state_ptr -= 1
                 self._curr_states.pop()
             elif diff.depth < depth_after:
-                print("one scope higher")
                 # returned from function previously, so go to
                 # absolute state one scope higher (which exists, since we rewind
                 # in history, so we have created this scope in a previous
@@ -80,7 +74,6 @@ class StateMachine(object):
                 # ,since we dont want to step back to the point after
                 # the function execution
                 if self.curr_diff.action == Action.RET:
-                    print("last return ")
                     self._exec_point -= 1
                     self._curr_state_ptr += 1
                     diff = deepcopy(self.curr_diff)
@@ -94,8 +87,6 @@ class StateMachine(object):
             if self._exec_point == 0:
                 self._at_start = True
         self._at_end = False
-        #  print(self._curr_state)
-        print(f"curr depth: {self.curr_depth}")
         assert self.curr_depth >= 0
 
     @property
@@ -273,14 +264,12 @@ class TimeTravelDebugger(object):
 
     def start(self):
         curr_depth = self._state_machine.curr_depth
-        print(f"curr depth: {curr_depth}")
         # only take in account call actions that happened in one function
         # scope lower
         while not( curr_depth == self._state_machine.curr_depth \
                 and self._state_machine.curr_diff.action == Action.CALL )\
                 and not self._state_machine.at_start:
             self._state_machine.backward()
-            print(f"after depth: {self._state_machine.curr_depth}")
 
     def continue_(self):
         while not (self.break_at_current() or self._state_machine.at_end):

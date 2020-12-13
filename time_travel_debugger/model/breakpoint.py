@@ -58,6 +58,10 @@ class Breakpoint(object):
         return self._id
 
     @property
+    def filename(self):
+        return self._filename
+
+    @property
     def status(self):
         return "active" if self.is_active else "not active"
 
