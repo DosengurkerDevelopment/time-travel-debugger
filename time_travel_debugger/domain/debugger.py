@@ -49,6 +49,8 @@ class StateMachine(object):
                 self._at_end = True
         self._at_start = False
         #  print(self._curr_state)
+        print(f"curr depth: {self.curr_depth}")
+        assert self.curr_depth >= 0
 
     def backward(self):
         ''' steps one step backwards if possible and computes the current state '''
@@ -64,8 +66,8 @@ class StateMachine(object):
                 # called new function previously, so rewind by deleting current
                 # context (which is safe, since when going forward we will
                 # recreate it)
-                self._curr_states.pop()
                 self._curr_state_ptr -= 1
+                self._curr_states.pop()
             elif diff.depth < depth_after:
                 print("one scope higher")
                 # returned from function previously, so go to
@@ -80,6 +82,7 @@ class StateMachine(object):
                 if self.curr_diff.action == Action.RET:
                     print("last return ")
                     self._exec_point -= 1
+                    self._curr_state_ptr += 1
                     diff = deepcopy(self.curr_diff)
                 # depth stayed the same, so rewind updated vars
                 self.curr_state.update(diff.changed)
@@ -90,9 +93,10 @@ class StateMachine(object):
         else:
             if self._exec_point == 0:
                 self._at_start = True
-
         self._at_end = False
         #  print(self._curr_state)
+        print(f"curr depth: {self.curr_depth}")
+        assert self.curr_depth >= 0
 
     @property
     def at_start(self):
@@ -245,16 +249,16 @@ class TimeTravelDebugger(object):
     def next(self):
         # TODO: check if next line is executable at all
         target = self._state_machine.curr_line + 1
-        while not(self._state_machine.curr_line == target
-                  or self._state_machine.at_end):
+        while not self._state_machine.curr_line == target\
+                 and not self._state_machine.at_end:
             self._state_machine.forward()
         self.stepping = True
 
     def previous(self):
         # TODO: check if previous line is executable at all
         target = self._state_machine.curr_line - 1
-        while not(self._state_machine.curr_line == target
-                  or self._state_machine.at_end):
+        while not self._state_machine.curr_line == target\
+                  and not self._state_machine.at_start:
             self._state_machine.backward()
         self.stepping = True
 
@@ -269,12 +273,14 @@ class TimeTravelDebugger(object):
 
     def start(self):
         curr_depth = self._state_machine.curr_depth
+        print(f"curr depth: {curr_depth}")
         # only take in account call actions that happened in one function
         # scope lower
-        while not( curr_depth +1  == self._state_machine.curr_depth \
-                and self._state_machine.next_action == Action.CALL )\
+        while not( curr_depth == self._state_machine.curr_depth \
+                and self._state_machine.curr_diff.action == Action.CALL )\
                 and not self._state_machine.at_start:
             self._state_machine.backward()
+            print(f"after depth: {self._state_machine.curr_depth}")
 
     def continue_(self):
         while not (self.break_at_current() or self._state_machine.at_end):
