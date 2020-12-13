@@ -26,11 +26,9 @@ class TimeTravelCLI(object):
         #  super().__init__(file)
 
     def __enter__(self, *args, **kwargs):
-        #  print("start tracing")
         self._tracer.set_trace()
 
     def __exit__(self, *args, **kwargs):
-        #  print("stop tracing")
         diffs, source_map = self._tracer.get_trace()
         print(diffs)
         #  print(diffs, source_map)

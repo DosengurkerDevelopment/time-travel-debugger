@@ -1,6 +1,9 @@
 import sys
 from time_travel_debugger.view.cli import TimeTravelCLI
 
+def list_comprehension_test(max):
+    a = [x for x in range(1,max)]
+    return a
 
 def id(a):
     b = 1234
@@ -37,4 +40,5 @@ def remove_html_markup(s):
 
 if __name__ == '__main__':
     with TimeTravelCLI():
+        #  test1(12)
         test1(12)
