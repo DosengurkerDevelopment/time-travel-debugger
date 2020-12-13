@@ -37,6 +37,17 @@ class ExecStateDiff(object):
         self._action = Action.RET
         return self
 
+    def __contains__(self, key):
+        return key in self.added or key in self.updated
+
+    def __getitem__(self, key):
+        if key in self.added:
+            return self.added[key]
+        elif key in self.updated:
+            return self.updated[key].after
+        else:
+            return None
+
     def __str__(self):
         return f"{self._action} \t- {self._function_states}\n"
 

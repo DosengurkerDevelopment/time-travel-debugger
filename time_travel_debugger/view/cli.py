@@ -15,6 +15,9 @@ from .completer import CLICompleter
 class TimeTravelCLI(object):
     ''' Command line debugger that supports stepping backwards in time. '''
 
+    NAV_COMMANDS = ['backstep', 'backuntil', 'continue', 'finish', 'next',
+                    'previous', 'reverse', 'until', 'step']
+
     def __init__(self, file=sys.stdout):
         # Stores the respective line number and variable changes for each
         # exection step
@@ -23,7 +26,6 @@ class TimeTravelCLI(object):
         self._debugger = None
         self._file = file
         self._last_command = ''
-        #  super().__init__(file)
 
     def __enter__(self, *args, **kwargs):
         #  print("start tracing")
@@ -32,14 +34,13 @@ class TimeTravelCLI(object):
     def __exit__(self, *args, **kwargs):
         #  print("stop tracing")
         diffs, source_map = self._tracer.get_trace()
-        print(diffs)
         #  print(diffs, source_map)
         self._completer = CLICompleter(self.commands())
         readline.set_completer(self._completer.complete)
         readline.parse_and_bind('tab: complete')
         #  print(diffs)
         self._debugger = TimeTravelDebugger(diffs, source_map)
-        self._debugger.start_debugger(self.get_input, self.execute)
+        self._debugger.start_debugger(self.execute, self.update)
 
     def get_input(self):
         cmd = input("(debugger) ")
@@ -49,8 +50,11 @@ class TimeTravelCLI(object):
             self._last_command = cmd
             return cmd
 
-    def execute(self, command, current_state, updates):
-        self._current_state = current_state
+    def is_nav_command(self, cmd):
+        return cmd.__name__.split('_')[0] in self.NAV_COMMANDS
+
+    def execute(self):
+        command = self.get_input()
         sep = command.find(' ')
         if sep > 0:
             cmd = command[:sep].strip()
@@ -59,22 +63,30 @@ class TimeTravelCLI(object):
             cmd = command.strip()
             arg = ""
 
-        for (var, old, new) in updates:
-            print(f"Changed {var}: {old} -> {new}")
-
-        code = self._debugger._source_map[self._debugger.curr_diff.func_name]
-        start_line = code['start']
-        # TODO: Need to check whether this is in range
-        code_line = code['code'][self._debugger.curr_line - start_line]
-
-        print(self._debugger.curr_line, code_line.strip())
-
-        if self._debugger.break_at_current():
-            print('Breakpoint hit!')
-
         method = self.command_method(cmd)
         if method:
             method(arg)
+
+        return self.is_nav_command(method)
+
+    def update(self, state, draw_update):
+        self._current_state = state
+
+        if draw_update:
+            self.list_command()
+
+            for wp in self._debugger.watchpoints:
+                if wp.has_changed():
+                    print(wp)
+
+            if self._debugger.break_at_current():
+                print('Breakpoint hit!')
+
+            if self._debugger.at_end:
+                print('Hit end of program')
+
+            if self._debugger.at_start:
+                print('Hit start of program')
 
     def commands(self):
         cmds = sorted([method.replace('_command', '')
@@ -154,7 +166,6 @@ class TimeTravelCLI(object):
     def list_command(self, arg=""):
         """Show current function. If arg is given, show its source code."""
         display_current_line = self._debugger.curr_line
-        print(self._debugger.curr_diff.func_name)
         if arg:
             # TODO: This does not work as intended
             try:
@@ -242,10 +253,10 @@ class TimeTravelCLI(object):
 
     def unwatch_command(self, arg=""):
         ''' Remove a watchpoint '''
-        if not self._debugger.remove_watchpoint(arg):
-            print(f"Watchpoint with id {arg} does not exists.")
+        if not self._debugger.remove_watchpoint(int(arg)):
+            print(f"Watchpoint with id {arg} does not exist.")
         else:
-            print(f"Successfully removed watchpoint {arg}")
+            print(f"Successfully removed watchpoint {arg}.")
 
     def break_command(self, arg=""):
         ''' Insert a breakpoint at the given location '''
@@ -292,5 +303,5 @@ class TimeTravelCLI(object):
 
     def cond_command(self, arg=""):
         ''' Set a conditional breakpoint at the given location '''
-        location, condition = arg.split()
+        location, condition = arg.split(" ", 1)
         self._debugger.add_breakpoint(location, "cond", cond=condition)
