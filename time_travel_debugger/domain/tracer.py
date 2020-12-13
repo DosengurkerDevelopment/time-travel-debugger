@@ -96,9 +96,9 @@ class TimeTravelTracer(object):
         # debugger
         filename = os.path.basename(inspect.getsourcefile(frame.f_code))
         code, startline = inspect.getsourcelines(frame.f_code)
-        if frame.f_code.co_name not in self._source_map:
-            self._source_map[frame.f_code.co_name] = {
-                "start": startline, "code": code, "filename": filename}
+        #  if frame.f_code.co_name not in self._source_map:
+        self._source_map[frame.f_code.co_name] = {
+            "start": startline, "code": code, "filename": filename}
         if frame.f_lineno == startline:
             # first call of traceit in current frame should be ignored
             return self._traceit

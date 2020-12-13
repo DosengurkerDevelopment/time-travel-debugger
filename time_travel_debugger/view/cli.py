@@ -30,7 +30,7 @@ class TimeTravelCLI(object):
 
     def __exit__(self, *args, **kwargs):
         diffs, source_map = self._tracer.get_trace()
-        print(diffs)
+        print(source_map)
         #  print(diffs, source_map)
         self._completer = CLICompleter(self.commands())
         readline.set_completer(self._completer.complete)
@@ -193,13 +193,55 @@ class TimeTravelCLI(object):
         ''' Go to start of the current function call '''
         self._debugger.start()
 
+    def _parse_until_args(self, arg, source_map):
+        '''
+        parses the arguments of the until command
+        '''
+        # TODO: this should be outsourced to some util class or whatever, so we
+        # can reuse it for the GUI
+        if not arg:
+            return {}
+        elif arg.isnumeric():
+            # Line
+            return {"line_no":int(arg)}
+        elif ':' not in arg:
+            # Function name
+            try:
+                line_no = int(source_map[arg]["start"])
+            except KeyError:
+                return "No such function!"
+            return {"line_no":line_no}
+        else:
+            # we have either <filename>:<line_number> 
+            # or <filename>:<function_name>
+            file_name, line_or_func = arg.split(':')
+            if line_or_func.isnumeric():
+                try:
+                    line_no = int(source_map[arg]["start"])
+                except KeyError:
+                    return "No such function!"
+            else:
+                #  parse func name to its starting line
+                line_no = int(source_map[line_or_func]["start"])
+            return { "file_name":file_name, "line_no":line_no }
+
     def until_command(self, arg=""):
         ''' Execute forward until a given point '''
-        pass
+        # Find out which type of breakpoint we want to insert
+        args = self._parse_until_args(arg, self._debugger.source_map)
+        if isinstance(args, dict):
+            self._debugger.until(**args)
+        elif isinstance(args, str):
+            print(args)
+
 
     def backuntil_command(self, arg=""):
         ''' Execute backward until a given point '''
-        pass
+        args = self._parse_until_args(arg, self._debugger.source_map)
+        if isinstance(args, dict):
+            self._debugger.backuntil(**args)
+        elif isinstance(args, str):
+            print(args)
 
     def continue_command(self, arg=""):
         ''' Continue execution forward until a breakpoint is hit '''

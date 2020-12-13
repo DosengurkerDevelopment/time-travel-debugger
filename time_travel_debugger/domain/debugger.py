@@ -156,6 +156,10 @@ class TimeTravelDebugger(object):
             return False
 
     @property
+    def source_map(self):
+        return self._source_map
+
+    @property
     def curr_line(self):
         return self._state_machine.curr_line
 
@@ -298,6 +302,30 @@ class TimeTravelDebugger(object):
     def reverse(self):
         while not (self.break_at_current() or self._state_machine.at_start):
             self._state_machine.backward()
+    
+    def until(self, line_no=0, file_name=""):
+        if line_no:
+            # line number given, so stop at lines larger than that
+            target = line_no
+        else:
+            # otherwise stop at lines bigger than next line
+            target = self.curr_line
+        print(f"target: {target}")
+        print(f"filename: {file_name}")
+        while not self.at_end:
+            if self.curr_line > target:
+                # if filename was given, check if current filename matches
+                if file_name:
+                    if file_name == self.curr_diff.file_name:
+                        break
+                # otherwise dont check for filename
+                else:
+                    break
+            self._state_machine.forward()
+
+    def backuntil(self, lineno="", filename=""):
+        # TODO: implement!
+        pass
 
     def get_breakpoint(self, id):
         for b in self.breakpoints:
