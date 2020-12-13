@@ -28,11 +28,9 @@ class TimeTravelCLI(object):
         self._last_command = ''
 
     def __enter__(self, *args, **kwargs):
-        #  print("start tracing")
         self._tracer.set_trace()
 
     def __exit__(self, *args, **kwargs):
-        #  print("stop tracing")
         diffs, source_map = self._tracer.get_trace()
         #  print(diffs, source_map)
         self._completer = CLICompleter(self.commands())

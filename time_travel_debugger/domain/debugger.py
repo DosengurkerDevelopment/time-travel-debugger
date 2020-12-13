@@ -245,16 +245,36 @@ class TimeTravelDebugger(object):
 
     def next(self):
         # TODO: check if next line is executable at all
+        curr_diff = self.curr_diff
+        code_lines = self._source_map[curr_diff.func_name]["code"]
+        start_line = self._source_map[curr_diff.func_name]["start"]
         target = self._state_machine.curr_line + 1
-        while not self._state_machine.curr_line == target\
-                and not self._state_machine.at_end:
+        relative_lineno = target - start_line
+        # check if at end of function
+        if relative_lineno < len(code_lines):
+            # continue to next line stepping over execution
+            while not self._state_machine.curr_line == target\
+                    and not self._state_machine.at_end:
+                self._state_machine.forward()
+        else:
+            # step out of function to caller
             self._state_machine.forward()
 
     def previous(self):
         # TODO: check if previous line is executable at all
         target = self._state_machine.curr_line - 1
-        while not self._state_machine.curr_line == target\
-                and not self._state_machine.at_start:
+        curr_diff = self.curr_diff
+        code_lines = self._source_map[curr_diff.func_name]["code"]
+        start_line = self._source_map[curr_diff.func_name]["start"]
+        relative_lineno = target - start_line
+        # check if at the beginning of function call
+        if relative_lineno > 0:
+            # step one line back stepping over execution
+            while not self._state_machine.curr_line == target\
+                    and not self._state_machine.at_start:
+                self._state_machine.backward()
+        else:
+            # step back out of function
             self._state_machine.backward()
 
     def finish(self):
