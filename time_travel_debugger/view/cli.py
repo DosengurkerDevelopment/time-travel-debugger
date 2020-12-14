@@ -243,11 +243,13 @@ class TimeTravelCLI(object):
             # or <filename>:<function_name>
             file_name, line_or_func = arg.split(":")
             if line_or_func.isnumeric():
+                line_no = int(line_or_func)
+            else:
+                #  parse func name to its starting line
                 try:
-                    line_no = int(source_map[arg]["start"])
+                    line_no = int(source_map[line_or_func]["start"])
                 except KeyError:
                     return "No such function!"
-            else:
                 #  parse func name to its starting line
                 line_no = int(source_map[line_or_func]["start"])
             return {"file_name": file_name, "line_no": line_no}

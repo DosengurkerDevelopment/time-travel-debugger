@@ -324,8 +324,6 @@ class TimeTravelDebugger(object):
         else:
             # otherwise stop at lines bigger than next line
             target = self.curr_line
-        print(f"target: {target}")
-        print(f"filename: {file_name}")
         while not self.at_end:
             if self.curr_line > target:
                 # if filename was given, check if current filename matches
