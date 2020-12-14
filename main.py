@@ -5,11 +5,6 @@ def list_comprehension_test(max):
     a = [x for x in range(1,max)]
     return a
 
-def id(a):
-    b = 1234
-    c = 12
-    return a
-
 
 def test1(a):
     x = 100
@@ -18,6 +13,13 @@ def test1(a):
         a -= 1
         x -= 1
     return
+
+
+def id(a):
+    b = 1234
+    c = 12
+    return a
+
 
 
 def remove_html_markup(s):

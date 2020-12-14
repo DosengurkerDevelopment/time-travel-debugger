@@ -32,11 +32,9 @@ class TimeTravelCLI(object):
 
     def __exit__(self, *args, **kwargs):
         diffs, source_map = self._tracer.get_trace()
-        #  print(diffs, source_map)
         self._completer = CLICompleter(self.commands())
         readline.set_completer(self._completer.complete)
         readline.parse_and_bind('tab: complete')
-        #  print(diffs)
         self._debugger = TimeTravelDebugger(diffs, source_map)
         self._debugger.start_debugger(self.execute, self.update)
 
@@ -227,13 +225,13 @@ class TimeTravelCLI(object):
             # or <filename>:<function_name>
             file_name, line_or_func = arg.split(':')
             if line_or_func.isnumeric():
-                try:
-                    line_no = int(source_map[arg]["start"])
-                except KeyError:
-                    return "No such function!"
+                line_no = int(line_or_func)
             else:
                 #  parse func name to its starting line
-                line_no = int(source_map[line_or_func]["start"])
+                try:
+                    line_no = int(source_map[line_or_func]["start"])
+                except KeyError:
+                    return "No such function!"
             return { "file_name":file_name, "line_no":line_no }
 
     def until_command(self, arg=""):
