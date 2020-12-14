@@ -13,10 +13,19 @@ from .completer import CLICompleter
 
 
 class TimeTravelCLI(object):
-    ''' Command line debugger that supports stepping backwards in time. '''
+    """ Command line debugger that supports stepping backwards in time. """
 
-    NAV_COMMANDS = ['backstep', 'backuntil', 'continue', 'finish', 'next',
-                    'previous', 'reverse', 'until', 'step']
+    NAV_COMMANDS = [
+        "backstep",
+        "backuntil",
+        "continue",
+        "finish",
+        "next",
+        "previous",
+        "reverse",
+        "until",
+        "step",
+    ]
 
     def __init__(self, file=sys.stdout):
         # Stores the respective line number and variable changes for each
@@ -25,7 +34,7 @@ class TimeTravelCLI(object):
         self._current_state = None
         self._debugger = None
         self._file = file
-        self._last_command = ''
+        self._last_command = ""
 
     def __enter__(self, *args, **kwargs):
         self._tracer.set_trace()
@@ -34,7 +43,7 @@ class TimeTravelCLI(object):
         diffs, source_map = self._tracer.get_trace()
         self._completer = CLICompleter(self.commands())
         readline.set_completer(self._completer.complete)
-        readline.parse_and_bind('tab: complete')
+        readline.parse_and_bind("tab: complete")
         self._debugger = TimeTravelDebugger(diffs, source_map)
         self._debugger.start_debugger(self.execute, self.update)
 
@@ -47,14 +56,14 @@ class TimeTravelCLI(object):
             return cmd
 
     def is_nav_command(self, cmd):
-        return cmd.__name__.split('_')[0] in self.NAV_COMMANDS
+        return cmd.__name__.split("_")[0] in self.NAV_COMMANDS
 
     def execute(self):
         command = self.get_input()
-        sep = command.find(' ')
+        sep = command.find(" ")
         if sep > 0:
             cmd = command[:sep].strip()
-            arg = command[sep + 1:].strip()
+            arg = command[sep + 1 :].strip()
         else:
             cmd = command.strip()
             arg = ""
@@ -62,8 +71,9 @@ class TimeTravelCLI(object):
         method = self.command_method(cmd)
         if method:
             method(arg)
-
-        return self.is_nav_command(method)
+            return self.is_nav_command(method)
+        else:
+            return False
 
     def update(self, state, draw_update):
         self._current_state = state
@@ -76,75 +86,83 @@ class TimeTravelCLI(object):
                     print(wp)
 
             if self._debugger.break_at_current():
-                print('Breakpoint hit!')
+                print("Breakpoint hit!")
 
             if self._debugger.at_end:
-                print('Hit end of program')
+                print("Hit end of program")
 
             if self._debugger.at_start:
-                print('Hit start of program')
+                print("Hit start of program")
 
     def commands(self):
-        cmds = sorted([method.replace('_command', '')
-                       for method in dir(self.__class__)
-                       if method.endswith('_command')])
+        cmds = sorted(
+            [
+                method.replace("_command", "")
+                for method in dir(self.__class__)
+                if method.endswith("_command")
+            ]
+        )
         return cmds
 
     def command_method(self, command):
-        if command.startswith('#'):
+        if command.startswith("#"):
             return None  # Comment
 
-        possible_cmds = [possible_cmd for possible_cmd in self.commands()
-                         if possible_cmd.startswith(command)]
+        possible_cmds = [
+            possible_cmd
+            for possible_cmd in self.commands()
+            if possible_cmd.startswith(command)
+        ]
 
         if len(possible_cmds) != 1 and command not in possible_cmds:
             self.help_command(command)
             return None
 
         cmd = possible_cmds[0]
-        return getattr(self, cmd + '_command')
+        return getattr(self, cmd + "_command")
 
-    def log(self, *objects, sep=' ', end='\n', flush=False):
+    def log(self, *objects, sep=" ", end="\n", flush=False):
         """Like print(), but always sending to file given at initialization,
-           and always flushing"""
+        and always flushing"""
         print(*objects, sep=sep, end=end, file=self._file, flush=True)
 
     ### COMMANDS ###
-
     def help_command(self, command=""):
-        '''Give help on given command. If no command is given, give help on all'''
+        """Give help on given command. If no command is given, give help on all"""
 
         if command:
-            possible_cmds = [possible_cmd for possible_cmd in self.commands()
-                             if possible_cmd.startswith(command)]
+            possible_cmds = [
+                possible_cmd
+                for possible_cmd in self.commands()
+                if possible_cmd.startswith(command)
+            ]
 
             if len(possible_cmds) == 0:
-                self.log(
-                    f"Unknown command {repr(command)}. Possible commands are:")
+                self.log(f"Unknown command {repr(command)}. Possible commands are:")
                 possible_cmds = self.commands()
             elif len(possible_cmds) > 1 and command not in possible_cmds:
-                self.log(
-                    f"Ambiguous command {repr(command)}. Possible expansions are:")
+                self.log(f"Ambiguous command {repr(command)}. Possible expansions are:")
         else:
             possible_cmds = self.commands()
 
         for cmd in possible_cmds:
             method = self.command_method(cmd)
             if method.__doc__ is not None:
-                desc = ' '.join(method.__doc__.split())
+                desc = " ".join(method.__doc__.split())
             else:
-                desc = ''
+                desc = ""
             self.log(f"{cmd:15} -- {desc}")
 
     def print_command(self, arg=""):
-        ''' Print all variables or pass an expression to evaluate in the
-        current context '''
+        """Print all variables or pass an expression to evaluate in the
+        current context"""
         # Shorthand such that the following code is not as lengthy
         curr_vars = self._current_state
 
         if not arg:
             self.log(
-                "\n".join([f"{var} = {repr(curr_vars[var])}" for var in curr_vars]))
+                "\n".join([f"{var} = {repr(curr_vars[var])}" for var in curr_vars])
+            )
         else:
             try:
                 self.log(f"{arg} = {repr(eval(arg, globals(), curr_vars))}")
@@ -152,11 +170,11 @@ class TimeTravelCLI(object):
                 self.log(f"{err.__class__.__name__}: {err}")
 
     def step_command(self, arg=""):
-        ''' Step to the next instruction '''
+        """ Step to the next instruction """
         self._debugger.step_forward()
 
     def backstep_command(self, arg=""):
-        ''' Step to the previous instruction '''
+        """ Step to the previous instruction """
         self._debugger.step_backward()
 
     def list_command(self, arg=""):
@@ -166,64 +184,64 @@ class TimeTravelCLI(object):
             # TODO: This does not work as intended
             try:
                 code = self._debugger._source_map[arg]
-                source_lines = code['code']
-                line_number = code['start']
+                source_lines = code["code"]
+                line_number = code["start"]
             except Exception as err:
                 self.log(f"{err.__class__.__name__}: {err}")
                 return
             display_current_line = -1
         else:
             code = self._debugger._source_map[self._debugger.curr_diff.func_name]
-            source_lines = code['code']
-            line_number = code['start']
+            source_lines = code["code"]
+            line_number = code["start"]
 
         for line in source_lines:
-            spacer = ' '
+            spacer = " "
             if line_number == display_current_line:
-                spacer = '>'
+                spacer = ">"
             elif self._debugger.is_line_breakpoint(line_number):
-                spacer = '#'
-            self.log(f'{line_number:4}{spacer} {line}', end='')
+                spacer = "#"
+            self.log(f"{line_number:4}{spacer} {line}", end="")
             line_number += 1
 
     def next_command(self, arg=""):
-        ''' Step to the next source line '''
+        """ Step to the next source line """
         self._debugger.next()
 
     def previous_command(self, arg=""):
-        ''' Step to the previous source line '''
+        """ Step to the previous source line """
         self._debugger.previous()
 
     def finish_command(self, arg=""):
-        ''' Finish the current function execution '''
+        """ Finish the current function execution """
         self._debugger.finish()
 
     def start_command(self, arg=""):
-        ''' Go to start of the current function call '''
+        """ Go to start of the current function call """
         self._debugger.start()
 
     def _parse_until_args(self, arg, source_map):
-        '''
+        """
         parses the arguments of the until command
-        '''
+        """
         # TODO: this should be outsourced to some util class or whatever, so we
         # can reuse it for the GUI
         if not arg:
             return {}
         elif arg.isnumeric():
             # Line
-            return {"line_no":int(arg)}
-        elif ':' not in arg:
+            return {"line_no": int(arg)}
+        elif ":" not in arg:
             # Function name
             try:
                 line_no = int(source_map[arg]["start"])
             except KeyError:
                 return "No such function!"
-            return {"line_no":line_no}
+            return {"line_no": line_no}
         else:
-            # we have either <filename>:<line_number> 
+            # we have either <filename>:<line_number>
             # or <filename>:<function_name>
-            file_name, line_or_func = arg.split(':')
+            file_name, line_or_func = arg.split(":")
             if line_or_func.isnumeric():
                 line_no = int(line_or_func)
             else:
@@ -232,10 +250,13 @@ class TimeTravelCLI(object):
                     line_no = int(source_map[line_or_func]["start"])
                 except KeyError:
                     return "No such function!"
-            return { "file_name":file_name, "line_no":line_no }
+            else:
+                #  parse func name to its starting line
+                line_no = int(source_map[line_or_func]["start"])
+            return {"file_name": file_name, "line_no": line_no}
 
     def until_command(self, arg=""):
-        ''' Execute forward until a given point '''
+        """ Execute forward until a given point """
         # Find out which type of breakpoint we want to insert
         args = self._parse_until_args(arg, self._debugger.source_map)
         if isinstance(args, dict):
@@ -243,9 +264,8 @@ class TimeTravelCLI(object):
         elif isinstance(args, str):
             print(args)
 
-
     def backuntil_command(self, arg=""):
-        ''' Execute backward until a given point '''
+        """ Execute backward until a given point """
         args = self._parse_until_args(arg, self._debugger.source_map)
         if isinstance(args, dict):
             self._debugger.backuntil(**args)
@@ -253,33 +273,33 @@ class TimeTravelCLI(object):
             print(args)
 
     def continue_command(self, arg=""):
-        ''' Continue execution forward until a breakpoint is hit '''
+        """ Continue execution forward until a breakpoint is hit """
         self._debugger.continue_()
 
     def reverse_command(self, arg=""):
-        ''' Continue execution backward until a breakpoint is hit '''
+        """ Continue execution backward until a breakpoint is hit """
         self._debugger.reverse()
 
     def where_command(self, arg=""):
-        ''' Print the call stack '''
+        """ Print the call stack """
         pass
 
     def up_command(self, arg=""):
-        ''' Move up the call stack '''
+        """ Move up the call stack """
         pass
 
     def down_command(self, arg=""):
-        ''' Move down the call stack '''
+        """ Move down the call stack """
         pass
 
     def watch_command(self, arg=""):
-        ''' Insert a watchpoint '''
+        """ Insert a watchpoint """
         if not arg:
             table_template = "{:^15}|{:^6}"
             header = table_template.format("id", "watched variable")
 
             print(header)
-            print('-'*len(header))
+            print("-" * len(header))
             for wp in self._debugger.watchpoints:
                 print(table_template.format(*wp))
         else:
@@ -290,26 +310,27 @@ class TimeTravelCLI(object):
                 print(f"Added watchpoint with id {res.id}.")
 
     def unwatch_command(self, arg=""):
-        ''' Remove a watchpoint '''
+        """ Remove a watchpoint """
         if not self._debugger.remove_watchpoint(int(arg)):
             print(f"Watchpoint with id {arg} does not exist.")
         else:
             print(f"Successfully removed watchpoint {arg}.")
 
     def break_command(self, arg=""):
-        ''' Insert a breakpoint at the given location '''
+        """ Insert a breakpoint at the given location """
         res = None
         # Find out which type of breakpoint we want to insert
         if arg.isnumeric():
             # Line breakpoint
             res = self._debugger.add_breakpoint(arg, "line")
-        elif ':' not in arg:
+        elif ":" not in arg:
             # Function breakpoint for different file
             res = self._debugger.add_breakpoint(arg, "func")
         else:
-            filename, function_name = arg.split(':')
+            filename, function_name = arg.split(":")
             res = self._debugger.add_breakpoint(
-                function_name, "func", filename=filename)
+                function_name, "func", filename=filename
+            )
 
         if res is not None:
             print(f"Breakpoint {res.id} added.")
@@ -317,29 +338,28 @@ class TimeTravelCLI(object):
             print("Could not add breakpoint.")
 
     def breakpoints_command(self, arg=""):
-        ''' List all breakpoints '''
+        """ List all breakpoints """
         table_template = "{:^15}|{:^6}|{:^20}|{:^15}|{:^20}"
-        header = table_template.format('id', 'type',
-                                       'location', 'active', 'condition')
+        header = table_template.format("id", "type", "location", "active", "condition")
 
         print(header)
-        print('-'*len(header))
+        print("-" * len(header))
         for bp in self._debugger.breakpoints:
             print(table_template.format(*bp))
 
     def delete_command(self, arg=""):
-        ''' Remove the given breakpoint '''
+        """ Remove the given breakpoint """
         self._debugger.remove_breakpoint(int(arg))
 
     def disable_command(self, arg=""):
-        ''' Disable the given breakpoint '''
+        """ Disable the given breakpoint """
         self._debugger.disable_breakpoint(int(arg))
 
     def enable_command(self, arg=""):
-        ''' Enable the given breakpoint '''
+        """ Enable the given breakpoint """
         self._debugger.enable_breakpoint(int(arg))
 
     def cond_command(self, arg=""):
-        ''' Set a conditional breakpoint at the given location '''
+        """ Set a conditional breakpoint at the given location """
         location, condition = arg.split(" ", 1)
         self._debugger.add_breakpoint(location, "cond", cond=condition)

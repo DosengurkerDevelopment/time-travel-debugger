@@ -6,8 +6,8 @@ from copy import deepcopy
 
 
 class StateMachine(object):
-    ''' Contains the absolute state of all defined variables of all currently
-    active functions '''
+    """Contains the absolute state of all defined variables of all currently
+    active functions"""
 
     def __init__(self, diffs):
         self._exec_state_diffs = diffs
@@ -37,8 +37,7 @@ class StateMachine(object):
         return code["code"][self.curr_line - code["start"]]
 
     def forward(self):
-        ''' steps one step forward if possible and computes the current state
-        '''
+        """steps one step forward if possible and computes the current state"""
 
         if self._exec_point < len(self._exec_state_diffs) - 1:
             prev_depth = self.curr_diff.depth
@@ -68,8 +67,7 @@ class StateMachine(object):
         assert self.curr_depth >= 0
 
     def backward(self):
-        ''' steps one step backwards if possible and computes the current state
-        '''
+        """steps one step backwards if possible and computes the current state"""
 
         # Check whether we reached the start of the program
         if self._exec_point > 0:
@@ -150,7 +148,6 @@ class StateMachine(object):
 
 
 class TimeTravelDebugger(object):
-
     def __init__(self, exec_state_diffs: List[ExecStateDiff], source_map):
         # Dictionary that contains source code objects for each frame
         self._source_map = source_map
@@ -210,8 +207,7 @@ class TimeTravelDebugger(object):
         return self.curr_line == line
 
     def is_in_function(self, func, file):
-        return self.curr_diff.func_name == func \
-            and self.curr_diff.file_name == file
+        return self.curr_diff.func_name == func and self.curr_diff.file_name == file
 
     def is_at_breakpoint(self, bp: Breakpoint):
         if bp.breakpoint_type == Breakpoint.FUNC:
@@ -220,8 +216,8 @@ class TimeTravelDebugger(object):
             return self.is_at_line(bp.location)
 
     def start_debugger(self, exec_command, update):
-        ''' Interaction loop that is run after the execution of the code inside
-        the with block is finished '''
+        """Interaction loop that is run after the execution of the code inside
+        the with block is finished"""
         # since we start at exec_point we have to step once to start at the
         # correct point and update the UI
         self._state_machine.forward()
@@ -240,11 +236,11 @@ class TimeTravelDebugger(object):
             update(state, performed_nav_command)
 
     def step_forward(self):
-        ''' Step forward one instruction at a time '''
+        """ Step forward one instruction at a time """
         self._state_machine.forward()
 
     def step_backward(self):
-        ''' Step backward one step at a time '''
+        """ Step backward one step at a time """
         self._state_machine.backward()
 
     def next(self):
@@ -257,8 +253,10 @@ class TimeTravelDebugger(object):
         # check if at end of function
         if relative_lineno < len(code_lines):
             # continue to next line stepping over execution
-            while not self._state_machine.curr_line == target\
-                    and not self._state_machine.at_end:
+            while (
+                not self._state_machine.curr_line == target
+                and not self._state_machine.at_end
+            ):
                 self._state_machine.forward()
         else:
             # step out of function to caller
@@ -268,14 +266,16 @@ class TimeTravelDebugger(object):
         # TODO: check if previous line is executable at all
         target = self._state_machine.curr_line - 1
         curr_diff = self.curr_diff
-        code_lines = self._source_map[curr_diff.func_name]["code"]
+
         start_line = self._source_map[curr_diff.func_name]["start"]
         relative_lineno = target - start_line
         # check if at the beginning of function call
         if relative_lineno > 0:
             # step one line back stepping over execution
-            while not self._state_machine.curr_line == target\
-                    and not self._state_machine.at_start:
+            while (
+                not self._state_machine.curr_line == target
+                and not self._state_machine.at_start
+            ):
                 self._state_machine.backward()
         else:
             # step back out of function
@@ -285,18 +285,26 @@ class TimeTravelDebugger(object):
         curr_depth = self._state_machine.curr_depth
         # only take in account return actions that happened in the same
         # function scope (in the same depth)
-        while not(curr_depth == self._state_machine.curr_depth
-                  and self._state_machine.next_action == Action.RET)\
-                and not self._state_machine.at_end:
+        while (
+            not (
+                curr_depth == self._state_machine.curr_depth
+                and self._state_machine.next_action == Action.RET
+            )
+            and not self._state_machine.at_end
+        ):
             self._state_machine.forward()
 
     def start(self):
         curr_depth = self._state_machine.curr_depth
         # only take in account call actions that happened in one function
         # scope lower
-        while not(curr_depth == self._state_machine.curr_depth
-                  and self._state_machine.curr_diff.action == Action.CALL)\
-                and not self._state_machine.at_start:
+        while (
+            not (
+                curr_depth == self._state_machine.curr_depth
+                and self._state_machine.curr_diff.action == Action.CALL
+            )
+            and not self._state_machine.at_start
+        ):
             self._state_machine.backward()
 
     def continue_(self):
@@ -308,7 +316,7 @@ class TimeTravelDebugger(object):
         self._state_machine.backward()
         while not (self.break_at_current() or self._state_machine.at_start):
             self._state_machine.backward()
-    
+
     def until(self, line_no=0, file_name=""):
         if line_no:
             # line number given, so stop at lines larger than that
@@ -353,10 +361,10 @@ class TimeTravelDebugger(object):
             # Find the code object corresponding to this line number and
             # filename
             for source in self._source_map.values():
-                if source['filename'] == filename:
+                if source["filename"] == filename:
                     # TODO: Encapsulate this in get_source_for_line
-                    starting_line = source['start']
-                    code = source['code']
+                    starting_line = source["start"]
+                    code = source["code"]
 
                     if starting_line > location:
                         continue
@@ -365,7 +373,7 @@ class TimeTravelDebugger(object):
                         continue
 
                     line = code[starting_line - location + 1]
-                    while line.startswith('\n') or line.startswith('#'):
+                    while line.startswith("\n") or line.startswith("#"):
                         location += 1
                         line = code[starting_line - location + 1]
 
