@@ -250,7 +250,6 @@ class TimeTravelCLI(object):
                     line_no = int(source_map[line_or_func]["start"])
                 except KeyError:
                     return "No such function!"
-            else:
                 #  parse func name to its starting line
                 line_no = int(source_map[line_or_func]["start"])
             return {"file_name": file_name, "line_no": line_no}
