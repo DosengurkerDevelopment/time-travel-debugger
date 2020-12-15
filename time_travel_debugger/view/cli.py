@@ -42,10 +42,12 @@ class TimeTravelCLI(object):
 
     def __exit__(self, *args, **kwargs):
         diffs, source_map = self._tracer.get_trace()
+        print(diffs)
         self._completer = CLICompleter(self.commands())
         readline.set_completer(self._completer.complete)
         readline.parse_and_bind("tab: complete")
         self._debugger = TimeTravelDebugger(diffs, source_map, self.update)
+        self._debugger.step_forward()
         self.execute()
 
     def get_input(self):
@@ -161,16 +163,16 @@ class TimeTravelCLI(object):
         current context"""
         # Shorthand such that the following code is not as lengthy
         curr_vars = self._current_state
-
-        if not arg:
-            self.log(
-                "\n".join([f"{var} = {repr(curr_vars[var])}" for var in curr_vars])
-            )
-        else:
-            try:
-                self.log(f"{arg} = {repr(eval(arg, globals(), curr_vars))}")
-            except Exception as err:
-                self.log(f"{err.__class__.__name__}: {err}")
+        if curr_vars:
+            if not arg:
+                self.log(
+                    "\n".join([f"{var} = {repr(curr_vars[var])}" for var in curr_vars])
+                )
+            else:
+                try:
+                    self.log(f"{arg} = {repr(eval(arg, globals(), curr_vars))}")
+                except Exception as err:
+                    self.log(f"{err.__class__.__name__}: {err}")
 
     def step_command(self, arg=""):
         """ Step to the next instruction """

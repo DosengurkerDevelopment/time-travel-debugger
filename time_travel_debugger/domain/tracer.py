@@ -15,14 +15,15 @@ class TimeTravelTracer(object):
         self._diffs: List[ExecStateDiff] = []
         self._source_map = {}
         self._last_vars = []
+        self._should_call = False
         self._root_func_name = ""
 
     def get_trace(self):
         sys.settrace(None)
-        #  self._diffs.insert(0,ExecStateDiff())
+        self._diffs.insert(0,deepcopy(self._diffs[0]))
         self._diffs.pop()
-        last_state = self._current_diff.finish()
-        self._diffs.append(last_state)
+        #  last_state = self._current_diff.finish()
+        #  self._diffs.append(last_state)
         return self._diffs, self._source_map
 
     def set_trace(self):
@@ -35,43 +36,35 @@ class TimeTravelTracer(object):
             self.traceit(frame, event, arg)
         return self._traceit
 
-    def _changed_vars(self, locals):
-        changed = {}
-        for var_name in locals:
-            # detect if a variable changed and push it into changed dict
-            if (var_name not in self._last_vars[-1] or
-                    self._last_vars[-1][var_name] != locals[var_name]):
-                changed[var_name] = locals[var_name]
-        # update last _last_vars
-        self._last_vars[-1] = deepcopy(locals)
-        return changed
-
     def _do_return(self):
         assert len(self._last_vars) > 0
-        self._last_vars.pop()
         new_state = self._current_diff.ret()
         self._diffs.append(new_state)
+        self._last_vars.pop()
 
     def _do_call(self, frame):
         #  self._diffs.pop()
         # we called a new function, so setup a new scope of variables
-        locals = frame.f_locals.copy()
-        self._last_vars.append({})
         # set last_frame manually since we don't compute _changed_vars
         # create new function frame in current _exec_state_diff
         new_state = self._current_diff.call(frame)
         self._diffs.append(new_state)
+        locals = frame.f_locals.copy()
+        self._last_vars.append(locals)
 
     def _do_update(self, frame):
         assert len(
             self._last_vars) > 0, f"all actions:{[x.action for x in self._diffs]}"
         # save old scope for the update on _exec_state_diff
-        prev_vars = self._last_vars[-1]
-        changed = self._changed_vars(frame.f_locals.copy())
+        #  prev_vars = self._last_vars[-1]
+        #  changed = self._changed_vars(frame.f_locals.copy())
         #  added = self._added_vars(frame.f_locals.copy())
         # new function, invoke in exec_state_diff accordingly
-        new_state = self._current_diff.update(frame, prev_vars, changed)
+        new_state = self._current_diff.update(frame,
+                deepcopy(self._last_vars[-1]),frame.f_locals.copy())
         self._diffs.append(new_state)
+        locals = frame.f_locals.copy()
+        self._last_vars[-1] = locals
 
     @property
     def _last_action(self):
@@ -114,12 +107,22 @@ class TimeTravelTracer(object):
             "start": startline, "code": code, "filename": filename}
         print(f"{frame.f_lineno}: {code[frame.f_lineno - startline]}")
         print(f"EVENT:{event}")
+        print(f"last_vars:{self._last_vars}")
+        print(f"locals:{frame.f_locals}")
         if event == "call":
+            # we dont want to directly do_call, since we always have one line,
+            # that does nothing after call
+            # In order to get rid of this, we always ignore the line where a
+            # call happens and postpone this call to one trace stop later
+            self._should_call = True
+        elif self._should_call:
             self._do_call(frame)
+            self._should_call = False
         elif event == "line":
             self._do_update(frame)
             #  print(f"UPDATE")
         elif event == "return":
+            #  self._do_update(frame)
             self._do_return()
             #  print(f"RETURN")
 

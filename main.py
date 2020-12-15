@@ -19,7 +19,6 @@ def test1(a):
 def id(a):
     b = 1234
     c = 12
-    return a
 
 def recursive_test(a):
     b = 111
@@ -66,9 +65,10 @@ def remove_html_markup(s):
 
 if __name__ == "__main__":
     with TimeTravelCLI():
-        #  test1(12)
-        #  recursive_test(12)
+        #  id(12)
+        test1(7)
+        #  recursive_test(2)
         #  dict_test(123)
-        list_comprehension_test(5) #  not working
+        #  list_comprehension_test(5) #  not working
         #  class_test(1, 2)  #  not working
         #  remove_html_markup("<tag>hello</tag>")
