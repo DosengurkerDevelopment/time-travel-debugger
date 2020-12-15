@@ -17,9 +17,10 @@ class Action(Enum):
 class ExecStateDiff(object):
     ''' Model for saving differences between states of executions '''
 
-    def __init__(self):
+    def __init__(self,root_func_name):
         self._function_states = []
         self._action = None
+        self._root_func_name = root_func_name
 
     def call(self, frame):
         self._function_states.append(FunctionStateDiff(frame))
@@ -35,6 +36,9 @@ class ExecStateDiff(object):
         assert len(self._function_states) > 0
         self._function_states.pop()
         self._action = Action.RET
+        return self
+
+    def finish(self):
         return self
 
     def __contains__(self, key):
@@ -59,19 +63,30 @@ class ExecStateDiff(object):
 
     @property
     def func_name(self):
-        return self._function_states[-1].func_name
+        if (len(self._function_states) > 0):
+            return self._function_states[-1].func_name
+        else:
+            return self._root_func_name
 
     @property
     def lineno(self):
-        return self._function_states[-1].lineno
+        if (len(self._function_states) > 0):
+            return self._function_states[-1].lineno
+        else:
+            return -1
 
     @property
     def added(self):
-        return self._function_states[-1].added
-
+        if (len(self._function_states) > 0):
+            return self._function_states[-1].added
+        else:
+            return {}
     @property
     def updated(self):
-        return self._function_states[-1].updated
+        if (len(self._function_states) > 0):
+            return self._function_states[-1].updated
+        else:
+            return {}
 
     @property
     def changed(self):
@@ -80,12 +95,18 @@ class ExecStateDiff(object):
 
     @property
     def file_name(self):
-        return self._function_states[-1].file_name
+        if (len(self._function_states) > 0):
+            return self._function_states[-1].file_name
+        else:
+            return ""
 
     # the number of nested function calls
     @property
     def depth(self):
-        return len(self._function_states) - 1
+        if (len(self._function_states) > 0):
+            return len(self._function_states) - 1
+        else:
+            return -1
 
 
 class FunctionStateDiff(object):
