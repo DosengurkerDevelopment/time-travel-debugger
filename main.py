@@ -22,8 +22,17 @@ def id(a):
     return a
 
 
+def recursive_test(a):
+    b = 111
+    if a > 0:
+        recursive_test(a - 1)
+    else:
+        return a
+
+
 def dict_test(a):
     b = {"test": "test"}
+    return
 
 
 class Test(object):
@@ -43,6 +52,8 @@ def remove_html_markup(s):
     quote = False
     out = ""
 
+    dict_test(s)
+
     for c in s:
         if c == "<" and not quote:
             tag = True
@@ -58,4 +69,9 @@ def remove_html_markup(s):
 
 if __name__ == "__main__":
     with TimeTravelCLI():
-        remove_html_markup("<tag>hallo</tag>")
+        #  test1(12)
+        #  recursive_test(12)
+        #  dict_test(123)
+        # list_comprehension_test(5) #  not working
+        #  class_test(1, 2)  #  not working
+        remove_html_markup("<tag>hello</tag>")

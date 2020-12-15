@@ -1,3 +1,4 @@
+import sys
 from typing import List
 from functools import wraps
 from ..model.watchpoint import Watchpoint
@@ -15,7 +16,7 @@ class StateMachine(object):
         self._curr_states = [{}]
         self._curr_state_ptr = 0
         #  start at -1 and step into first diff in start_debugger
-        self._exec_point = -1
+        self._exec_point = 0
         # True if we are at the start of the current frame
         self._at_start = True
         # True if we are the end of the current frame
@@ -160,6 +161,7 @@ class TimeTravelDebugger(object):
 
         self._breakpoints = []
         self._watchpoints = []
+        self._call_stack_depth = 0
 
         self._update = update
 
@@ -174,6 +176,7 @@ class TimeTravelDebugger(object):
                 wp.update(state.get(wp.var_name, None))
 
             self._update(state)
+            self._call_stack_depth = self._state_machine.curr_diff.depth
             return ret
 
         return nfunc
@@ -308,7 +311,6 @@ class TimeTravelDebugger(object):
         ):
             self._state_machine.forward()
 
-
     @trigger_update
     def start(self):
         curr_depth = self._state_machine.curr_depth
@@ -380,6 +382,22 @@ class TimeTravelDebugger(object):
                 else:
                     break
             self._state_machine.backward()
+
+    def where(self, bound=sys.maxsize):
+        print(self.curr_diff)
+        func_states = self._state_machine.curr_diff.get_function_states()
+        print(func_states)
+        call_stack = []
+        for state in func_states:
+            #  fun_code = self._source_map[state.fun_name]
+            call_stack = call_stack+[ state.func_name ]
+        print(f"full call stack: {call_stack}")
+
+        print(bound)
+        lower_bound = max(0,self._call_stack_depth - bound)
+        upper_bound = min(len(call_stack),self._call_stack_depth + bound)
+        print(f"lower:{lower_bound}, upper:{upper_bound}")
+        return call_stack[lower_bound:upper_bound]
 
     def get_breakpoint(self, id):
         for b in self.breakpoints:

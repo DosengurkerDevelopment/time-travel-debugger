@@ -57,6 +57,9 @@ class ExecStateDiff(object):
 
     __repr__ = __str__
 
+    def get_function_states(self):
+        return self._function_states
+
     @property
     def action(self):
         return self._action
@@ -121,7 +124,7 @@ class FunctionStateDiff(object):
         self._lineno = frame.f_lineno
 
         # Variables that were added to the state in this step
-        self._added_vars = frame.f_locals.copy()
+        self._added_vars = {}
         # Variables that were updated in this step
         self._updated_vars = {}
 
