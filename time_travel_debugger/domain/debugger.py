@@ -22,95 +22,70 @@ class StateMachine(object):
         # True if we are the end of the current frame
         self._at_end = False
 
-    def get_source_for_function(self, func_name):
-        try:
-            return self._source_map[func_name]
-        except KeyError:
-            return None
-
-    def get_source_for_current_frame(self):
-        return self._source_map[self.curr_diff.func_name]
-
-    def get_source_for_line(self, line):
-        pass
-
-    def get_source_for_current_line(self):
-        code = self.get_source_for_current_frame()
-        return code["code"][self.curr_line - code["start"]]
-
     def forward(self):
         """steps one step forward if possible and computes the current state"""
 
         if not self.at_end:
-            prev_depth = self.curr_diff.depth
             self._exec_point += 1
-            diff = deepcopy(self.curr_diff)
-            if diff.depth > prev_depth:
+            new_diff = self.curr_diff
+            print(new_diff)
+            if new_diff.action == Action.CALL:
                 # called new function, so create new absolute state with added
                 # variables (parameters)
-                self._curr_states.append(diff.added.copy())
+                self._curr_states.append(new_diff.changed)
                 self._curr_state_ptr += 1
-            elif diff.depth < prev_depth:
-                # returned from function, so return to previous absolute state
-                # and step one further, since return statements dont do
-                # anything
+            elif new_diff.action == Action.RET:
+                # returned from function, so step down to previous scope
+                # dont delete old scope though, since we might need it, when
+                # going back in time
                 self._curr_state_ptr -= 1
-                self._exec_point += 1
-                diff = deepcopy(self.curr_diff)
-            else:
+                #  self._exec_point += 1
+                #  diff = deepcopy(self.curr_diff)
+            elif new_diff.action == Action.UPDATE:
                 # depth stayed the same, so just update the state
-                self.curr_state.update(diff.changed)
-
-            self._at_end = False
-        else:
-            if self._exec_point < len(self._exec_state_diffs):
-                self._at_end = True
-        self._at_start = False
-        #  assert self.curr_depth >= 0
+                self.curr_state.update(new_diff.changed.copy())
+            else:
+                raise Exception(f"Invalid Action: '{new_diff.action}'")
 
     def backward(self):
         """steps one step backwards if possible and computes the current state"""
 
         # Check whether we reached the start of the program
         if not self.at_start:
-            diff = deepcopy(self._exec_state_diffs[self._exec_point])
+            prev_diff = deepcopy(self.curr_diff)
             self._exec_point -= 1
-            depth_after = self.curr_diff.depth
-            if diff.depth > depth_after:
+            if prev_diff.action == Action.CALL:
                 # called new function previously, so rewind by deleting current
                 # context (which is safe, since when going forward we will
                 # recreate it)
                 self._curr_state_ptr -= 1
                 self._curr_states.pop()
-            elif diff.depth < depth_after:
+            elif prev_diff.action == Action.RET:
                 # returned from function previously, so go to absolute state
                 # one scope higher (which exists, since we rewind in history,
                 # so we have created this scope in a previous execution)
                 self._curr_state_ptr += 1
-            else:
+            elif prev_diff.action == Action.UPDATE:
                 # if previous action was return then step to return statement
                 # ,since we dont want to step back to the point after
                 # the function execution
                 if self.curr_diff.action == Action.RET:
                     self._exec_point -= 1
                     self._curr_state_ptr += 1
-                    diff = deepcopy(self.curr_diff)
+                    prev_diff = deepcopy(self.curr_diff)
                 # depth stayed the same, so rewind updated vars
-                self.curr_state.update(diff.changed)
+                self.curr_state.update(prev_diff.changed)
                 # and delete added vars
-                for k in diff.added:
+                for k in prev_diff.added:
                     self.curr_state.pop(k)
-            self._at_start = False
-        else:
-            if self._exec_point == 0:
-                self._at_start = True
-        self._at_end = False
-        assert self.curr_depth >= 0
+            else:
+                raise Exception(f"Invalid Action: '{prev_diff.action}'")
+
 
     @property
     def at_start(self):
         #  return self._at_start
-        return self._exec_point < 1
+        return self._exec_point < 2
 
     @property
     def at_end(self):

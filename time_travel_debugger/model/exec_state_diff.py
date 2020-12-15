@@ -3,6 +3,7 @@ import os
 import inspect
 import collections
 from enum import Enum
+from copy import deepcopy
 
 # named tuple for a variable change
 VarUpdate = collections.namedtuple('VarUpdate', 'before after')
@@ -124,7 +125,7 @@ class FunctionStateDiff(object):
         self._lineno = frame.f_lineno
 
         # Variables that were added to the state in this step
-        self._added_vars = {}
+        self._added_vars = frame.f_locals.copy()
         # Variables that were updated in this step
         self._updated_vars = {}
 
