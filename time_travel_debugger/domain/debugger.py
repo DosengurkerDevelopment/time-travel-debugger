@@ -214,13 +214,13 @@ class TimeTravelDebugger(object):
         else:
             return self.is_at_line(bp.location)
 
-    def start_debugger(self, exec_command, update):
+    def start_debugger(self):
         """Interaction loop that is run after the execution of the code inside
         the with block is finished"""
         # since we start at exec_point we have to step once to start at the
         # correct point and update the UI
         self._state_machine.forward()
-        update(self._state_machine.curr_state)
+        self._update(self._state_machine.curr_state)
 
     @trigger_update
     def step_forward(self):

@@ -9,7 +9,7 @@ from ..model.exec_state_diff import ExecStateDiff, Action
 
 class TimeTravelTracer(object):
 
-    NO_TRACE = ['__exit__', 'get_trace']
+    NO_TRACE = ["__exit__", "get_trace"]
 
     def __init__(self):
         self._diffs: List[ExecStateDiff] = []
@@ -30,7 +30,7 @@ class TimeTravelTracer(object):
         sys.settrace(self._traceit)
 
     def _traceit(self, frame, event, arg):
-        ''' Internal tracing method '''
+        """ Internal tracing method """
         # Don't trace __exit__ function and get_trace
         if frame.f_code.co_name not in self.NO_TRACE:
             self.traceit(frame, event, arg)
@@ -53,8 +53,9 @@ class TimeTravelTracer(object):
         self._last_vars.append(locals)
 
     def _do_update(self, frame):
-        assert len(
-            self._last_vars) > 0, f"all actions:{[x.action for x in self._diffs]}"
+        assert (
+            len(self._last_vars) > 0
+        ), f"all actions:{[x.action for x in self._diffs]}"
         # save old scope for the update on _exec_state_diff
         #  prev_vars = self._last_vars[-1]
         #  changed = self._changed_vars(frame.f_locals.copy())
@@ -78,7 +79,7 @@ class TimeTravelTracer(object):
         return self._root_func_name
 
     @root_func_name.setter
-    def root_func_name(self,x):
+    def root_func_name(self, x):
         if not self._root_func_name:
             self._root_func_name = x
 
@@ -90,12 +91,12 @@ class TimeTravelTracer(object):
             return ExecStateDiff(self._root_func_name)
 
     def traceit(self, frame, event, arg):
-        ''' Record the execution inside the with block.
+        """Record the execution inside the with block.
         We do not store the complete state for each execution point, instead
         we calculate the difference and store a 'diff' which contains the old
         and the new value such that we can easily restore the state without
         having to backtrack to the beginning.
-        '''
+        """
 
         # collect the code in a source_map, so we can print it later in the
         # debugger

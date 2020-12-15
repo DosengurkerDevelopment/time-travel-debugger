@@ -1,5 +1,6 @@
 import inspect
 import sys
+from pygments import highlight, lexers, formatters, styles
 
 # DO NOT REMOVE THIS
 import readline
@@ -36,6 +37,7 @@ class TimeTravelCLI(object):
         self._file = file
         self._last_command = ""
         self._draw_update = True
+        self._lexer = lexers.get_lexer_by_name("Python")
 
     def __enter__(self, *args, **kwargs):
         self._tracer.set_trace()
@@ -200,13 +202,23 @@ class TimeTravelCLI(object):
             source_lines = code["code"]
             line_number = code["start"]
 
-        for line in source_lines:
+        block = "".join(source_lines)
+
+        coloured = highlight(
+            block,
+            lexer=self._lexer,
+            formatter=formatters.get_formatter_by_name(
+                "16m", style=styles.get_style_by_name("solarized-dark")
+            ),
+        )
+
+        for line in coloured.strip().split("\n"):
             spacer = " "
             if line_number == display_current_line:
                 spacer = ">"
             elif self._debugger.is_line_breakpoint(line_number):
                 spacer = "#"
-            self.log(f"{line_number:4}{spacer} {line}", end="")
+            print(f"{line_number:4}{spacer} {line}")
             line_number += 1
 
     def next_command(self, arg=""):
