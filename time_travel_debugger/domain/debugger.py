@@ -1,4 +1,5 @@
 from typing import List
+from functools import wraps
 from ..model.watchpoint import Watchpoint
 from ..model.breakpoint import Breakpoint
 from ..model.exec_state_diff import ExecStateDiff, Action
@@ -148,7 +149,7 @@ class StateMachine(object):
 
 
 class TimeTravelDebugger(object):
-    def __init__(self, exec_state_diffs: List[ExecStateDiff], source_map):
+    def __init__(self, exec_state_diffs: List[ExecStateDiff], source_map, update):
         # Dictionary that contains source code objects for each frame
         self._source_map = source_map
         # The current state of variables:
@@ -156,6 +157,23 @@ class TimeTravelDebugger(object):
 
         self._breakpoints = []
         self._watchpoints = []
+
+        self._update = update
+
+    def trigger_update(func):
+        @wraps(func)
+        def nfunc(self, *args, **kwargs):
+            ret = func(self, *args, **kwargs)
+
+            state = self._state_machine.curr_state
+
+            for wp in self.watchpoints:
+                wp.update(state.get(wp.var_name, None))
+
+            self._update(state)
+            return ret
+
+        return nfunc
 
     @property
     def source_map(self):
@@ -221,28 +239,19 @@ class TimeTravelDebugger(object):
         # since we start at exec_point we have to step once to start at the
         # correct point and update the UI
         self._state_machine.forward()
-        update(self._state_machine.curr_state, False)
+        update(self._state_machine.curr_state)
 
-        while True:
-            #  Assemble the vars of the current state of the program
-            performed_nav_command = exec_command()
-
-            state = self._state_machine.curr_state
-
-            if performed_nav_command:
-                for wp in self.watchpoints:
-                    wp.update(state.get(wp.var_name, None))
-
-            update(state, performed_nav_command)
-
+    @trigger_update
     def step_forward(self):
         """ Step forward one instruction at a time """
         self._state_machine.forward()
 
+    @trigger_update
     def step_backward(self):
         """ Step backward one step at a time """
         self._state_machine.backward()
 
+    @trigger_update
     def next(self):
         # TODO: check if next line is executable at all
         curr_diff = self.curr_diff
@@ -262,6 +271,7 @@ class TimeTravelDebugger(object):
             # step out of function to caller
             self._state_machine.forward()
 
+    @trigger_update
     def previous(self):
         # TODO: check if previous line is executable at all
         target = self._state_machine.curr_line - 1
@@ -281,6 +291,7 @@ class TimeTravelDebugger(object):
             # step back out of function
             self._state_machine.backward()
 
+    @trigger_update
     def finish(self):
         curr_depth = self._state_machine.curr_depth
         # only take in account return actions that happened in the same
@@ -294,6 +305,8 @@ class TimeTravelDebugger(object):
         ):
             self._state_machine.forward()
 
+
+    @trigger_update
     def start(self):
         curr_depth = self._state_machine.curr_depth
         # only take in account call actions that happened in one function
@@ -307,16 +320,19 @@ class TimeTravelDebugger(object):
         ):
             self._state_machine.backward()
 
+    @trigger_update
     def continue_(self):
         self._state_machine.forward()
         while not (self.break_at_current() or self._state_machine.at_end):
             self._state_machine.forward()
 
+    @trigger_update
     def reverse(self):
         self._state_machine.backward()
         while not (self.break_at_current() or self._state_machine.at_start):
             self._state_machine.backward()
 
+    @trigger_update
     def until(self, line_no=0, file_name=""):
         if line_no:
             # line number given, so stop at lines larger than that
@@ -339,6 +355,7 @@ class TimeTravelDebugger(object):
                     break
             self._state_machine.forward()
 
+    @trigger_update
     def backuntil(self, line_no=0, file_name=""):
         if line_no:
             # line number given, so stop at lines larger than that

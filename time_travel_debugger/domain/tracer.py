@@ -9,7 +9,7 @@ from ..model.exec_state_diff import ExecStateDiff, Action
 
 class TimeTravelTracer(object):
 
-    NO_TRACE = ['__exit__', 'get_trace']
+    NO_TRACE = ["__exit__", "get_trace"]
 
     def __init__(self):
         self._diffs: List[ExecStateDiff] = []
@@ -26,7 +26,7 @@ class TimeTravelTracer(object):
         sys.settrace(self._traceit)
 
     def _traceit(self, frame, event, arg):
-        ''' Internal tracing method '''
+        """ Internal tracing method """
         # Don't trace __exit__ function and get_trace
         if frame.f_code.co_name not in self.NO_TRACE:
             self.traceit(frame, event, arg)
@@ -36,8 +36,10 @@ class TimeTravelTracer(object):
         changed = {}
         for var_name in locals:
             # detect if a variable changed and push it into changed dict
-            if (var_name not in self._last_vars[-1] or
-                    self._last_vars[-1][var_name] != locals[var_name]):
+            if (
+                var_name not in self._last_vars[-1]
+                or self._last_vars[-1][var_name] != locals[var_name]
+            ):
                 changed[var_name] = locals[var_name]
         # update last _last_vars
         self._last_vars[-1] = locals.copy()
@@ -60,8 +62,9 @@ class TimeTravelTracer(object):
         return new_state
 
     def _do_update(self, frame):
-        assert len(
-            self._last_vars) > 0, f"all actions:{[x.action for x in self._diffs]}"
+        assert (
+            len(self._last_vars) > 0
+        ), f"all actions:{[x.action for x in self._diffs]}"
         # save old scope for the update on _exec_state_diff
         prev_vars = self._last_vars[-1]
         changed = self._changed_vars(frame.f_locals.copy())
@@ -85,12 +88,12 @@ class TimeTravelTracer(object):
             return ExecStateDiff()
 
     def traceit(self, frame, event, arg):
-        ''' Record the execution inside the with block.
+        """Record the execution inside the with block.
         We do not store the complete state for each execution point, instead
         we calculate the difference and store a 'diff' which contains the old
         and the new value such that we can easily restore the state without
         having to backtrack to the beginning.
-        '''
+        """
 
         # collect the code in a source_map, so we can print it later in the
         # debugger
@@ -98,7 +101,10 @@ class TimeTravelTracer(object):
         code, startline = inspect.getsourcelines(frame.f_code)
         #  if frame.f_code.co_name not in self._source_map:
         self._source_map[frame.f_code.co_name] = {
-            "start": startline, "code": code, "filename": filename}
+            "start": startline,
+            "code": code,
+            "filename": filename,
+        }
         if frame.f_lineno == startline:
             # first call of traceit in current frame should be ignored
             return self._traceit
@@ -109,8 +115,9 @@ class TimeTravelTracer(object):
             new_state = self._do_return()
         # check if last action was a return statement
         # in that case don't do call, since we step back in to previous frame
-        elif self._last_action != Action.RET\
-                and frame.f_code.co_name != self._last_frame:
+        elif (
+            self._last_action != Action.RET and frame.f_code.co_name != self._last_frame
+        ):
             if "return " in line_code:
                 # this is the state where we first see return, but didnt execute the
                 # previous line yet
@@ -124,7 +131,7 @@ class TimeTravelTracer(object):
                 # so perform update and next round we can perform return
                 self._should_return = True
             #  if self._last_action == Action.RET:
-                #  return self._traceit
+            #  return self._traceit
             new_state = self._do_update(frame)
 
         self._diffs.append(new_state)

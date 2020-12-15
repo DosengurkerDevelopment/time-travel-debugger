@@ -35,6 +35,7 @@ class TimeTravelCLI(object):
         self._debugger = None
         self._file = file
         self._last_command = ""
+        self._draw_update = True
 
     def __enter__(self, *args, **kwargs):
         self._tracer.set_trace()
@@ -44,8 +45,8 @@ class TimeTravelCLI(object):
         self._completer = CLICompleter(self.commands())
         readline.set_completer(self._completer.complete)
         readline.parse_and_bind("tab: complete")
-        self._debugger = TimeTravelDebugger(diffs, source_map)
-        self._debugger.start_debugger(self.execute, self.update)
+        self._debugger = TimeTravelDebugger(diffs, source_map, self.update)
+        self.execute()
 
     def get_input(self):
         cmd = input("(debugger) ")
@@ -70,15 +71,17 @@ class TimeTravelCLI(object):
 
         method = self.command_method(cmd)
         if method:
+            self._draw_update = self.is_nav_command(method)
             method(arg)
-            return self.is_nav_command(method)
         else:
-            return False
+            self._draw_update = False
 
-    def update(self, state, draw_update):
+        self.execute()
+
+    def update(self, state):
         self._current_state = state
 
-        if draw_update:
+        if self._draw_update:
             self.list_command()
 
             for wp in self._debugger.watchpoints:
