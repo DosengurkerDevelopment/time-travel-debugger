@@ -15,8 +15,6 @@ class TimeTravelTracer(object):
         self._diffs: List[ExecStateDiff] = []
         self._source_map = {}
         self._last_vars = []
-        self._last_frame = None
-        self._should_return = False
         self._root_func_name = ""
 
     def get_trace(self):
@@ -45,24 +43,24 @@ class TimeTravelTracer(object):
                     self._last_vars[-1][var_name] != locals[var_name]):
                 changed[var_name] = locals[var_name]
         # update last _last_vars
-        self._last_vars[-1] = locals.copy()
+        self._last_vars[-1] = deepcopy(locals)
         return changed
 
     def _do_return(self):
         assert len(self._last_vars) > 0
         self._last_vars.pop()
         new_state = self._current_diff.ret()
-        self._last_frame = new_state.func_name
-        return new_state
+        self._diffs.append(new_state)
 
     def _do_call(self, frame):
+        #  self._diffs.pop()
         # we called a new function, so setup a new scope of variables
-        self._last_vars.append(frame.f_locals.copy())
+        locals = frame.f_locals.copy()
+        self._last_vars.append({})
         # set last_frame manually since we don't compute _changed_vars
-        self._last_frame = frame.f_code.co_name
         # create new function frame in current _exec_state_diff
         new_state = self._current_diff.call(frame)
-        return new_state
+        self._diffs.append(new_state)
 
     def _do_update(self, frame):
         assert len(
@@ -73,7 +71,7 @@ class TimeTravelTracer(object):
         #  added = self._added_vars(frame.f_locals.copy())
         # new function, invoke in exec_state_diff accordingly
         new_state = self._current_diff.update(frame, prev_vars, changed)
-        return new_state
+        self._diffs.append(new_state)
 
     @property
     def _last_action(self):
@@ -114,33 +112,16 @@ class TimeTravelTracer(object):
         #  if frame.f_code.co_name not in self._source_map:
         self._source_map[frame.f_code.co_name] = {
             "start": startline, "code": code, "filename": filename}
-        relative_line_no = frame.f_lineno - startline
-        line_code = code[relative_line_no]
-        at_last_line_of_func = relative_line_no == (len(code)-1)
-        if frame.f_lineno == startline:
-            # first call of traceit in current frame should be ignored,
-            # since its the function definition
-            return self._traceit
-        # print(f"line {relative_line_no}/{len(code)-1} : { line_code }")
-        # check if last action was a return statement
-        # in that case don't do call, since we step back in to previous frame
-        if self._last_action != Action.RET\
-                and frame.f_code.co_name != self._last_frame:
-            new_state = self._do_call(frame)
-            # print(f"CALL")
-        else:
-            new_state = self._do_update(frame)
-            # print(f"UPDATE")
+        print(f"{frame.f_lineno}: {code[frame.f_lineno - startline]}")
+        print(f"EVENT:{event}")
+        if event == "call":
+            self._do_call(frame)
+        elif event == "line":
+            self._do_update(frame)
+            #  print(f"UPDATE")
+        elif event == "return":
+            self._do_return()
+            #  print(f"RETURN")
 
-        if at_last_line_of_func:
-            if self._should_return:
-                # we executed the statement before return, so we can return
-                self._should_return = False
-                new_state = self._do_return()
-                # print(f"RETURN")
-            else:
-                self._should_return = True
-
-        self._diffs.append(new_state)
         # print(f"vars:{self._diffs[-1]}")
         return self._traceit

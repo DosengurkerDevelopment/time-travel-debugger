@@ -284,7 +284,11 @@ class TimeTravelCLI(object):
 
     def where_command(self, arg=""):
         """ Print the call stack """
-        pass
+        params = {}
+        if arg:
+            params["bound"] = int(arg)
+        call_stack = self._debugger.where(**params)
+        print(call_stack)
 
     def up_command(self, arg=""):
         """ Move up the call stack """
