@@ -1,7 +1,7 @@
 import functools
 from pygments import highlight, lexers, formatters, styles
 from ipywidgets import Output, Button, GridspecLayout
-from IPython.core.display import display, HTML
+from IPython.core.display import display, HTML, clear_output
 
 from ..domain.debugger import TimeTravelDebugger
 from ..domain.tracer import TimeTravelTracer
@@ -19,28 +19,27 @@ class GUI(object):
         self._output = Output(layout={"border": "1px solid black"})
         display(self._output)
 
+        self.register_button(self.step_command)
+        self.register_button(self.backstep_command)
+
     def __enter__(self, *args, **kwargs):
         self._tracer.set_trace()
 
     def __exit__(self, *args, **kwargs):
         diffs, source_map = self._tracer.get_trace()
         self._debugger = TimeTravelDebugger(diffs, source_map, self.update)
-        input()
 
-    def register_button(func):
-        @functools.wraps(func)
-        def nfunc(self, *args, **kwargs):
-            button = Button(description=func.__name__.removesuffix("_command"))
-            button.on_click(functools.partial(func, self))
-            display(button)
-
-        return nfunc
+    def register_button(self, func):
+        button = Button(description=func.__name__.removesuffix("_command"))
+        button.on_click(func)
+        display(button)
 
     def is_nav_command(self, cmd):
         return cmd.__name__.removesuffix("_command") in self.NAV_COMMANDS
 
-    def update(self, state, draw_update):
+    def update(self, state):
         with self._output:
+            clear_output(wait=True)
             self.list_command()
 
     def commands(self):
@@ -118,12 +117,10 @@ class GUI(object):
             except Exception as err:
                 self.log(f"{err.__class__.__name__}: {err}")
 
-    @register_button
     def step_command(self, arg=""):
         """ Step to the next instruction """
         self._debugger.step_forward()
 
-    @register_button
     def backstep_command(self, arg=""):
         """ Step to the previous instruction """
         self._debugger.step_backward()

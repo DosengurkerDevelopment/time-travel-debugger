@@ -121,26 +121,26 @@ class TimeTravelTracer(object):
             # first call of traceit in current frame should be ignored,
             # since its the function definition
             return self._traceit
-        print(f"line {relative_line_no}/{len(code)-1} : { line_code }")
+        # print(f"line {relative_line_no}/{len(code)-1} : { line_code }")
         # check if last action was a return statement
         # in that case don't do call, since we step back in to previous frame
         if self._last_action != Action.RET\
                 and frame.f_code.co_name != self._last_frame:
             new_state = self._do_call(frame)
-            print(f"CALL")
+            # print(f"CALL")
         else:
             new_state = self._do_update(frame)
-            print(f"UPDATE")
+            # print(f"UPDATE")
 
         if at_last_line_of_func:
             if self._should_return:
                 # we executed the statement before return, so we can return
                 self._should_return = False
                 new_state = self._do_return()
-                print(f"RETURN")
+                # print(f"RETURN")
             else:
                 self._should_return = True
 
         self._diffs.append(new_state)
-        print(f"vars:{self._diffs[-1]}")
+        # print(f"vars:{self._diffs[-1]}")
         return self._traceit
