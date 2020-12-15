@@ -1,6 +1,6 @@
 import functools
 from pygments import highlight, lexers, formatters, styles
-from ipywidgets import Output, Button, GridspecLayout
+from ipywidgets import Output, Button, GridspecLayout, VBox, HBox, HTML
 from IPython.core.display import display, HTML, clear_output
 
 from ..domain.debugger import TimeTravelDebugger
@@ -8,6 +8,18 @@ from ..domain.tracer import TimeTravelTracer
 
 
 class GUI(object):
+
+    _SYMBOLS = {
+        "step": {"symbol": "\u2BC8", "button": None},
+        "next": {"symbol": "\u23ED", "button": None},
+        "backstep": {"symbol": "\u2BC7", "button": None},
+        "previous": {"symbol": "\u23EE", "button": None},
+        "finish": {
+            "symbol": "finish",
+        },
+        "start": {"symbol": "start", "button": None},
+    }
+
     def __init__(self):
         # Stores the respective line number and variable changes for each
         # exection step
@@ -16,11 +28,36 @@ class GUI(object):
         self._debugger = None
 
         self._lexer = lexers.get_lexer_by_name("Python")
-        self._output = Output(layout={"border": "1px solid black"})
-        display(self._output)
+        self._code_output = Output(layout={"border": "1px solid black"})
+        self._var_output = Output(layout={"border": "1px solid black"})
 
-        self.register_button(self.step_command)
-        self.register_button(self.backstep_command)
+        for key, item in self._SYMBOLS.items():
+            self.register_button(key, item["symbol"])
+
+        buttons = VBox(
+            [
+                HBox(
+                    [
+                        self._SYMBOLS["backstep"]["button"],
+                        self._SYMBOLS["step"]["button"],
+                    ]
+                ),
+                HBox(
+                    [
+                        self._SYMBOLS["previous"]["button"],
+                        self._SYMBOLS["next"]["button"],
+                    ]
+                ),
+                HBox(
+                    [
+                        self._SYMBOLS["start"]["button"],
+                        self._SYMBOLS["finish"]["button"],
+                    ]
+                ),
+            ]
+        )
+
+        display(HBox([self._code_output, self._var_output, buttons]))
 
     def __enter__(self, *args, **kwargs):
         self._tracer.set_trace()
@@ -28,19 +65,32 @@ class GUI(object):
     def __exit__(self, *args, **kwargs):
         diffs, source_map = self._tracer.get_trace()
         self._debugger = TimeTravelDebugger(diffs, source_map, self.update)
+        self._debugger.start_debugger()
 
-    def register_button(self, func):
-        button = Button(description=func.__name__.removesuffix("_command"))
+    def register_button(self, key, description):
+        button = Button(description=description)
+        func = getattr(self, key + "_command")
         button.on_click(func)
-        display(button)
-
-    def is_nav_command(self, cmd):
-        return cmd.__name__.removesuffix("_command") in self.NAV_COMMANDS
+        self._SYMBOLS[key]["button"] = button
 
     def update(self, state):
-        with self._output:
+        self._current_state = state
+
+        self._SYMBOLS["previous"]["button"].disabled = self._debugger.at_start
+        self._SYMBOLS["start"]["button"].disabled = self._debugger.at_start
+        self._SYMBOLS["backstep"]["button"].disabled = self._debugger.at_start
+
+        self._SYMBOLS["next"]["button"].disabled = self._debugger.at_end
+        self._SYMBOLS["finish"]["button"].disabled = self._debugger.at_end
+        self._SYMBOLS["step"]["button"].disabled = self._debugger.at_end
+
+        with self._code_output:
             clear_output(wait=True)
             self.list_command()
+
+        with self._var_output:
+            clear_output(wait=True)
+            self.print_command()
 
     def commands(self):
         cmds = sorted(
