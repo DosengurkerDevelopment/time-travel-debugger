@@ -40,7 +40,7 @@ class StateMachine(object):
     def forward(self):
         """steps one step forward if possible and computes the current state"""
 
-        if self._exec_point < len(self._exec_state_diffs) - 1:
+        if not self.at_end:
             prev_depth = self.curr_diff.depth
             self._exec_point += 1
             diff = deepcopy(self.curr_diff)
@@ -65,13 +65,13 @@ class StateMachine(object):
             if self._exec_point < len(self._exec_state_diffs):
                 self._at_end = True
         self._at_start = False
-        assert self.curr_depth >= 0
+        #  assert self.curr_depth >= 0
 
     def backward(self):
         """steps one step backwards if possible and computes the current state"""
 
         # Check whether we reached the start of the program
-        if self._exec_point > 0:
+        if not self.at_start:
             diff = deepcopy(self._exec_state_diffs[self._exec_point])
             self._exec_point -= 1
             depth_after = self.curr_diff.depth
@@ -108,11 +108,14 @@ class StateMachine(object):
 
     @property
     def at_start(self):
-        return self._at_start
+        #  return self._at_start
+        return self._exec_point < 1
 
     @property
     def at_end(self):
-        return self._at_end
+        #  return self._at_end
+        return self._exec_point== len(self._exec_state_diffs) -1
+
 
     @property
     def curr_line(self):
