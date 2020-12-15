@@ -20,7 +20,18 @@ def id(a):
     c = 12
     return a
 
+def dict_test(a):
+    b = {"test":"test"}
 
+class Test(object):
+    def  __init__(self,a,b):
+        self.a = a 
+        self.b = b
+
+def class_test(a,b):
+    a -= 1
+    test = Test(a,b)
+    print ( a )
 
 def remove_html_markup(s):
     tag = False
@@ -43,4 +54,7 @@ def remove_html_markup(s):
 if __name__ == '__main__':
     with TimeTravelCLI():
         #  test1(12)
-        test1(12)
+        #  test1(12)
+        #  dict_test(123)
+        #  list_comprehension_test(5) #  not working
+        class_test(1,2) #  not working

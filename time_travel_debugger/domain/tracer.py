@@ -102,23 +102,27 @@ class TimeTravelTracer(object):
         if frame.f_lineno == startline:
             # first call of traceit in current frame should be ignored
             return self._traceit
-        line_code = code[frame.f_lineno - startline]
-        if "return " in line_code and self._should_return:
+        relative_line_no = frame.f_lineno - startline
+        line_code = code[relative_line_no]
+        #  print(f"line {relative_line_no}/{len(code)-1} : { line_code }")
+        if relative_line_no == (len(code)-1) and self._should_return:
             # we executed the statement before return, so we can return
             self._should_return = False
             new_state = self._do_return()
+            #  print(f"RETURN")
         # check if last action was a return statement
         # in that case don't do call, since we step back in to previous frame
         elif self._last_action != Action.RET\
                 and frame.f_code.co_name != self._last_frame:
-            if "return " in line_code:
+            if relative_line_no == (len(code)-1):
                 # this is the state where we first see return, but didnt execute the
                 # previous line yet
                 # so perform call and next round we can perform return
                 self._should_return = True
             new_state = self._do_call(frame)
+            #  print(f"CALL")
         else:
-            if "return " in line_code:
+            if relative_line_no == (len(code)-1):
                 # this is the state where we first see return, but didnt execute the
                 # previous line yet
                 # so perform update and next round we can perform return
@@ -126,6 +130,7 @@ class TimeTravelTracer(object):
             #  if self._last_action == Action.RET:
                 #  return self._traceit
             new_state = self._do_update(frame)
+            #  print(f"UPDATE")
 
         self._diffs.append(new_state)
         return self._traceit
