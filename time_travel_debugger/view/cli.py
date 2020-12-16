@@ -90,7 +90,7 @@ class TimeTravelCLI(object):
         self._current_state = state
 
         if self._draw_update:
-            os.system("clear")
+            # os.system("clear")
             self.list_command()
 
             for wp in self._debugger.watchpoints:
@@ -378,19 +378,16 @@ class TimeTravelCLI(object):
 
     def break_command(self, arg=""):
         """ Insert a breakpoint at the given location """
-        res = None
         # Find out which type of breakpoint we want to insert
         if not arg or arg.isnumeric():
             # Line breakpoint
-            res = self._debugger.add_breakpoint(arg, "line")
+            res = self._debugger.add_breakpoint(lineno=arg)
         elif ":" not in arg:
-            # Function breakpoint for different file
-            res = self._debugger.add_breakpoint(arg, "func")
+            # Function breakpoint for current file
+            res = self._debugger.add_breakpoint(funcname=arg)
         else:
-            filename, function_name = arg.split(":")
-            res = self._debugger.add_breakpoint(
-                function_name, "func", filename=filename
-            )
+            filename, funcname = arg.split(":")
+            res = self._debugger.add_breakpoint(filename=filename, funcname=funcname)
 
         if res is not None:
             print(f"Breakpoint {res.id} added.")
@@ -421,5 +418,9 @@ class TimeTravelCLI(object):
 
     def cond_command(self, arg=""):
         """ Set a conditional breakpoint at the given location """
-        location, condition = arg.split(" ", 1)
-        self._debugger.add_breakpoint(location, "cond", cond=condition)
+        try:
+            lineno, condition = arg.split(" ", 1)
+        except ValueError:
+            self.log("Cond needs a line number and a condition")
+            return
+        self._debugger.add_breakpoint(lineno=lineno, cond=condition)

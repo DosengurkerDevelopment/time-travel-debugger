@@ -1,10 +1,17 @@
 import sys
+from enum import Enum
 from typing import List
 from functools import wraps
 from ..model.watchpoint import Watchpoint
-from ..model.breakpoint import Breakpoint
+from ..model.breakpoint import Breakpoint, FunctionBreakpoint, BPType
 from ..model.exec_state_diff import ExecStateDiff, Action
 from copy import deepcopy
+
+
+class Direction(Enum):
+
+    FORWARD = 1
+    BACKWARD = -1
 
 
 class FunctionStates(object):
@@ -112,10 +119,11 @@ class StateMachine(object):
         self._at_start = True
         # True if we are the end of the current frame
         self._at_end = False
+        self._direction = Direction.FORWARD
 
     def forward(self):
         """steps one step forward if possible and computes the current state"""
-
+        self._direction = Direction.FORWARD
         if not self.at_end:
             # step one step forward
             prev_diff = deepcopy(self.curr_diff)
@@ -139,6 +147,7 @@ class StateMachine(object):
     def backward(self):
         """steps one step backwards if possible and computes the current state"""
 
+        self._direction = Direction.BACKWARD
         # Check whether we reached the start of the program
         if not self.at_start:
 
@@ -182,6 +191,18 @@ class StateMachine(object):
     def curr_diff(self):
         diff = self._exec_state_diffs[self._exec_point]
         return diff
+
+    @property
+    def prev_diff(self):
+        return self._exec_state_diffs[self._exec_point - 1]
+
+    @property
+    def next_diff(self):
+        return self._exec_state_diffs[self._exec_point + 1]
+
+    @property
+    def direction(self):
+        return self._direction
 
     @property
     def next_action(self):
@@ -251,6 +272,14 @@ class TimeTravelDebugger(object):
         return self._state_machine.curr_diff
 
     @property
+    def prev_diff(self):
+        return self._state_machine.prev_diff
+
+    @property
+    def next_diff(self):
+        return self._state_machine.next_diff
+
+    @property
     def breakpoints(self):
         return self._breakpoints
 
@@ -272,30 +301,37 @@ class TimeTravelDebugger(object):
 
     def break_at_current(self):
         for bp in self.breakpoints:
-            if self.is_at_breakpoint(bp) and bp.eval_condition(self.curr_state):
+            if self.is_at_breakpoint(bp) and bp.active:
                 return True
         return False
 
-    def is_line_breakpoint(self, line):
+    def is_line_breakpoint(self, line, filename=None):
+        filename = filename or self.curr_diff.file_name
+        source = self.find_source_for_location(filename, line)
+        file = source["filename"]
         for bp in self.breakpoints:
-            if bp.breakpoint_type == Breakpoint.FUNC:
+            if bp.filename != file:
                 continue
-            if bp.location == line:
-                return True
+            if bp.breakpoint_type == BPType.FUNC:
+                continue
+            else:
+                if bp.lineno == line:
+                    return True
         return False
 
     def is_at_line(self, line):
         return self.curr_line == line
 
-    def is_in_function(self, func, file):
-        # Forward:
-        pass
-
-    def is_at_breakpoint(self, bp: Breakpoint):
-        if bp.breakpoint_type == Breakpoint.FUNC:
-            return self.is_in_function(bp.location, bp.filename)
+    def is_at_breakpoint(self, bp):
+        if self.curr_diff.file_name != bp.filename:
+            return False
+        if bp.breakpoint_type == BPType.FUNC:
+            if self._state_machine.direction == Direction.FORWARD:
+                return self.is_at_line(bp.startline)
+            if self._state_machine.direction == Direction.BACKWARD:
+                return self.is_at_line(bp.endline)
         else:
-            return self.is_at_line(bp.location)
+            return self.is_at_line(bp.lineno) and bp.eval_condition(self.curr_state)
 
     def start_debugger(self):
         """Interaction loop that is run after the execution of the code inside
@@ -472,37 +508,47 @@ class TimeTravelDebugger(object):
                 return b
         return None
 
-    def add_breakpoint(self, location, bp_type, filename="", cond=""):
+    def add_breakpoint(self, lineno=None, filename="", funcname="", cond=""):
         # Find next breakpoint id
         if not self.breakpoints:
-            next_bp_id = 1
+            id = 1
         else:
-            next_bp_id = max([b.id for b in self.breakpoints]) + 1
+            id = max([b.id for b in self.breakpoints]) + 1
 
         if not filename:
             filename = self.curr_diff.file_name
 
-        if bp_type == Breakpoint.FUNC and location not in self._source_map:
-            return None
-
-        if bp_type != Breakpoint.FUNC:
-            if location:
-                location = int(location)
-            else:
-                location = self.curr_line
+        if not lineno and funcname:
+            if funcname not in self._source_map:
+                return None
+            # TODO: Need filename here as well
+            source = self.get_source_for_func(funcname)
+            start = source["start"]
+            code = source["code"]
+            startline = start + 1
+            endline = start + len(code) - 1
+            breakpoint = FunctionBreakpoint(id, funcname, filename, startline, endline)
+        else:
+            try:
+                lineno = int(lineno)
+            except (ValueError, TypeError):
+                lineno = self.curr_line
 
             # Find the code object corresponding to this line number and
             # filename
-            source = self.find_source_for_location(filename, location)
-            location, line = self.find_next_executable_line(location, source)
+            source = self.find_source_for_location(filename, lineno)
+            lineno = self.find_next_executable_line(lineno, source)
 
-        new_bp = Breakpoint(next_bp_id, location, filename, bp_type, cond)
-        self.breakpoints.append(new_bp)
-        return new_bp
+            print(lineno)
+
+            breakpoint = Breakpoint(id, lineno, filename, cond)
+
+        self.breakpoints.append(breakpoint)
+        return breakpoint
 
     def get_source_for_func(self, funcname=None):
         source = self._source_map[funcname or self.curr_diff.func_name]
-        return source["start"], source["code"]
+        return source
 
     def find_source_for_location(self, filename, line_number):
         for func_name, source in self._source_map.items():
@@ -511,7 +557,7 @@ class TimeTravelDebugger(object):
                 code = source["code"]
                 end_line = starting_line + len(code)
 
-                if not (starting_line < line_number < end_line):
+                if not (starting_line <= line_number < end_line):
                     continue
 
                 return source

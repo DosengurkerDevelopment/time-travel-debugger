@@ -1,6 +1,8 @@
 import sys
 from time_travel_debugger.view.cli import TimeTravelCLI
 
+from test_module import module
+
 
 def list_comprehension_test(max):
     a = [x for x in range(1, max)]
@@ -52,7 +54,7 @@ def remove_html_markup(s):
     quote = False
     out = ""
 
-    test1(14)
+    module(1, 4)
 
     # Help
     # blub
