@@ -81,7 +81,6 @@ class StateMachine(object):
             else:
                 raise Exception(f"Invalid Action: '{prev_diff.action}'")
 
-
     @property
     def at_start(self):
         #  return self._at_start
@@ -411,17 +410,15 @@ class TimeTravelDebugger(object):
                     # TODO: Encapsulate this in get_source_for_line
                     starting_line = source["start"]
                     code = source["code"]
+                    end_line = starting_line + len(code)
 
-                    if starting_line > location:
+                    if not (starting_line < location < end_line):
                         continue
 
-                    if location > starting_line + len(code):
-                        continue
-
-                    line = code[starting_line - location + 1]
-                    while line.startswith("\n") or line.startswith("#"):
+                    line = code[location - starting_line].strip()
+                    while (not line or line.startswith("#")) and location < end_line:
                         location += 1
-                        line = code[starting_line - location + 1]
+                        line = code[location - starting_line].strip()
 
                     break
             else:
