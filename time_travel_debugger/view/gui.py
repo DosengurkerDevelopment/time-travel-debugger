@@ -1,7 +1,16 @@
-import functools
-from pygments import highlight, lexers, formatters, styles
-from ipywidgets import Output, Button, GridspecLayout, VBox, HBox, HTML, Layout
-from IPython.core.display import display, HTML, clear_output
+from IPython.core.display import clear_output, display, Markdown
+from ipywidgets import (
+    AppLayout,
+    Button,
+    HBox,
+    IntSlider,
+    Layout,
+    Output,
+    VBox,
+    Label,
+    HTML,
+)
+from pygments import formatters, highlight, lexers
 
 from ..domain.debugger import TimeTravelDebugger
 from ..domain.tracer import TimeTravelTracer
@@ -14,10 +23,10 @@ class GUI(object):
         "next": {"symbol": "\u23ED", "button": None},
         "backstep": {"symbol": "\u2BC7", "button": None},
         "previous": {"symbol": "\u23EE", "button": None},
-        "finish": {"symbol": "finish", "button": None},
-        "start": {"symbol": "start", "button": None},
-        "continue": {"symbol": "continue", "button": None},
-        "reverse": {"symbol": "reverse", "button": None},
+        "finish": {"symbol": "Finish", "button": None},
+        "start": {"symbol": "Start", "button": None},
+        "continue": {"symbol": "Continue", "button": None},
+        "reverse": {"symbol": "Reverse", "button": None},
     }
 
     def __init__(self):
@@ -30,6 +39,8 @@ class GUI(object):
         self._lexer = lexers.get_lexer_by_name("Python")
         self._code_output = Output(layout=Layout(width="700px"))
         self._var_output = Output(layout=Layout(width="400px"))
+        self._code_pane = HBox([self._code_output, self._var_output])
+        self._diff_slider = IntSlider(readout=False, layout=Layout(width="200px"))
 
         for key, item in self._BUTTONS.items():
             self.register_button(key, item["symbol"])
@@ -40,10 +51,19 @@ class GUI(object):
                 HBox(self.get_buttons("previous", "next")),
                 HBox(self.get_buttons("start", "finish")),
                 HBox(self.get_buttons("continue", "reverse")),
+                self._diff_slider,
             ]
         )
 
-        display(HBox([self._code_output, self._var_output, buttons]))
+        self._layout = AppLayout(
+            header=HTML(value="<h1>Time Travel Debugger by DosengurkerDevelopment"),
+            left_sidebar=None,
+            center=self._code_pane,
+            right_sidebar=buttons,
+            footer=None,
+        )
+
+        display(self._layout)
 
     def __enter__(self, *args, **kwargs):
         self._tracer.set_trace()
@@ -52,6 +72,8 @@ class GUI(object):
         diffs, source_map = self._tracer.get_trace()
         self._debugger = TimeTravelDebugger(diffs, source_map, self.update)
         self._debugger.start_debugger()
+        self._diff_slider.max = len(diffs)
+        self._diff_slider.observe(self.slider_command, names="value")
 
     def get_button(self, key):
         return self._BUTTONS[key]["button"]
@@ -67,6 +89,8 @@ class GUI(object):
 
     def update(self, state):
         self._current_state = state
+
+        self._diff_slider.value = self._debugger._state_machine._exec_point
 
         self._BUTTONS["previous"]["button"].disabled = self._debugger.at_start
         self._BUTTONS["start"]["button"].disabled = self._debugger.at_start
@@ -242,3 +266,6 @@ class GUI(object):
         """ Set a conditional breakpoint at the given location """
         location, condition = arg.split(" ", 1)
         self._debugger.add_breakpoint(location, "cond", cond=condition)
+
+    def slider_command(self, change):
+        self._debugger.step_to_index(change["new"])

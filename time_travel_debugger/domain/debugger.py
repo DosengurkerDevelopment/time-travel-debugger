@@ -164,7 +164,6 @@ class StateMachine(object):
 
             #  print(self._func_states)
 
-
     @property
     def at_start(self):
         #  return self._at_start
@@ -173,8 +172,7 @@ class StateMachine(object):
     @property
     def at_end(self):
         #  return self._at_end
-        return self._exec_point== len(self._exec_state_diffs) -1
-
+        return self._exec_point == len(self._exec_state_diffs) - 1
 
     @property
     def curr_line(self):
@@ -317,6 +315,15 @@ class TimeTravelDebugger(object):
         self._state_machine.backward()
 
     @trigger_update
+    def step_to_index(self, index):
+        if index < self._state_machine._exec_point:
+            while index < self._state_machine._exec_point:
+                self._state_machine.backward()
+        if index > self._state_machine._exec_point:
+            while index > self._state_machine._exec_point:
+                self._state_machine.forward()
+
+    @trigger_update
     def next(self):
         # TODO: check if next line is executable at all
         curr_diff = self.curr_diff
@@ -449,12 +456,12 @@ class TimeTravelDebugger(object):
         call_stack = []
         for state in func_states:
             #  fun_code = self._source_map[state.fun_name]
-            call_stack = call_stack+[ state.func_name ]
+            call_stack = call_stack + [state.func_name]
         print(f"full call stack: {call_stack}")
 
         print(bound)
-        lower_bound = max(0,self._call_stack_depth - bound)
-        upper_bound = min(len(call_stack),self._call_stack_depth + bound)
+        lower_bound = max(0, self._call_stack_depth - bound)
+        upper_bound = min(len(call_stack), self._call_stack_depth + bound)
         print(f"lower:{lower_bound}, upper:{upper_bound}")
         return call_stack[lower_bound:upper_bound]
 
@@ -475,7 +482,10 @@ class TimeTravelDebugger(object):
             filename = self.curr_diff.file_name
 
         if bp_type != Breakpoint.FUNC:
-            location = int(location)
+            if location:
+                location = int(location)
+            else:
+                location = self.curr_line
 
             # Find the code object corresponding to this line number and
             # filename
@@ -484,17 +494,15 @@ class TimeTravelDebugger(object):
                     # TODO: Encapsulate this in get_source_for_line
                     starting_line = source["start"]
                     code = source["code"]
+                    end_line = starting_line + len(code)
 
-                    if starting_line > location:
+                    if not (starting_line < location < end_line):
                         continue
 
-                    if location > starting_line + len(code):
-                        continue
-
-                    line = code[starting_line - location + 1]
-                    while line.startswith("\n") or line.startswith("#"):
+                    line = code[location - starting_line].strip()
+                    while (not line or line.startswith("#")) and location < end_line:
                         location += 1
-                        line = code[starting_line - location + 1]
+                        line = code[location - starting_line].strip()
 
                     break
             else:

@@ -187,8 +187,22 @@ class TimeTravelCLI(object):
     def list_command(self, arg=""):
         """Show current function. If arg is given, show its source code."""
         display_current_line = self._debugger.curr_line
-        if arg:
-            # TODO: This does not work as intended
+        above, below = 0, 0
+
+        args = arg.strip().split()
+        use_current = all(x.isnumeric() for x in args)
+
+        if len(args) == 1 and args[0].isnumeric():
+            above = below = int(arg)
+        elif len(args) == 2 and all(x.isnumeric() for x in args):
+            above, below = [int(a) for a in arg.split()]
+
+        if use_current:
+            code = self._debugger._source_map[self._debugger.curr_diff.func_name]
+            source_lines = code["code"]
+            line_number = code["start"]
+        else:
+            # List the given function
             try:
                 code = self._debugger._source_map[arg]
                 source_lines = code["code"]
@@ -197,29 +211,41 @@ class TimeTravelCLI(object):
                 self.log(f"{err.__class__.__name__}: {err}")
                 return
             display_current_line = -1
-        else:
-            code = self._debugger._source_map[self._debugger.curr_diff.func_name]
-            source_lines = code["code"]
-            line_number = code["start"]
-
-        block = "".join(source_lines)
 
         coloured = highlight(
-            block,
+            "".join(source_lines),
             lexer=self._lexer,
             formatter=formatters.get_formatter_by_name(
                 "16m", style=styles.get_style_by_name("solarized-dark")
             ),
         )
 
-        for line in coloured.strip().split("\n"):
+        lines = coloured.strip().split("\n")
+
+        top = 0
+        bot = len(lines)
+
+        def clamp(x):
+            if x > bot:
+                return bot
+            if x < top:
+                return top
+            return x
+
+        if use_current and (above > 0 or below > 0):
+            curr_line = self._debugger.curr_line - line_number
+            top = clamp(curr_line - above)
+            bot = clamp(curr_line + below + 1)
+
+        lines = lines[top:bot]
+
+        for ln, line in enumerate(lines, start=line_number + top):
             spacer = " "
-            if line_number == display_current_line:
+            if ln == display_current_line:
                 spacer = ">"
-            elif self._debugger.is_line_breakpoint(line_number):
+            elif self._debugger.is_line_breakpoint(ln):
                 spacer = "#"
-            print(f"{line_number:4}{spacer} {line}")
-            line_number += 1
+            print(f"{ln:4}{spacer} {line}")
 
     def next_command(self, arg=""):
         """ Step to the next source line """
@@ -340,7 +366,7 @@ class TimeTravelCLI(object):
         """ Insert a breakpoint at the given location """
         res = None
         # Find out which type of breakpoint we want to insert
-        if arg.isnumeric():
+        if not arg or arg.isnumeric():
             # Line breakpoint
             res = self._debugger.add_breakpoint(arg, "line")
         elif ":" not in arg:

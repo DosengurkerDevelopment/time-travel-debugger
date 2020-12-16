@@ -54,6 +54,11 @@ def remove_html_markup(s):
 
     dict_test(s)
 
+
+
+    #Help 
+    #blub
+
     for c in s:
         if c == "<" and not quote:
             tag = True
@@ -70,7 +75,7 @@ def remove_html_markup(s):
 if __name__ == "__main__":
     with TimeTravelCLI():
         #  id(12)
-        test1(7)
+        # test1(7)
         #  recursive_test(2)
         #  dict_test(123)
         # list_comprehension_test(5) #  not working
