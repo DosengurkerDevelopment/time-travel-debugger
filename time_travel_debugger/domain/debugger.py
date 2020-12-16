@@ -399,7 +399,10 @@ class TimeTravelDebugger(object):
             filename = self.curr_diff.file_name
 
         if bp_type != Breakpoint.FUNC:
-            location = int(location)
+            if location:
+                location = int(location)
+            else:
+                location = self.curr_line
 
             # Find the code object corresponding to this line number and
             # filename

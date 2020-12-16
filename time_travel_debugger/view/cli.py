@@ -340,7 +340,7 @@ class TimeTravelCLI(object):
         """ Insert a breakpoint at the given location """
         res = None
         # Find out which type of breakpoint we want to insert
-        if arg.isnumeric():
+        if not arg or arg.isnumeric():
             # Line breakpoint
             res = self._debugger.add_breakpoint(arg, "line")
         elif ":" not in arg:
