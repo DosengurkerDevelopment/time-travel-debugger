@@ -1,44 +1,19 @@
-class Breakpoint(object):
-    ''' Container class that holds one breakpoint and all its properties '''
+from enum import Enum
 
-    LINE = 'line'
-    FUNC = 'func'
-    COND = 'cond'
 
-    def __init__(self, id, location, filename, bp_type, condition=""):
-        ''' Init method for the breakpoint class.  
-            Args:
-                - id: id of the breakpoint
-                - location: location of the breapoint, either a line number or
-                      function name
-                - filename: name of the source file the line or function is
-                      located in
-                - bp_type: type of the breakpoint, one of LINE, FUNC, COND
+class BPType(Enum):
 
-            Keyword Args:
-                - condition: a python expression passed as a string that is
-                    evaluated whenever we pass this breakpoint
-        '''
+    COND = "cond"
+    FUNC = "func"
+    LINE = "line"
 
+
+class BaseBreakpoint(object):
+    def __init__(self, id, filename, type_):
         self._id = id
         self._filename = filename
-        self._location = location
-        self._condition = condition
         self._active = True
-        self._bp_type = bp_type
-
-    def __iter__(self):
-        return iter((self.id, self.breakpoint_type, self.abs_location,
-                     self.status, self.condition))
-
-    def eval_condition(self, context):
-        ''' Evaluate the condition given in the constructor in the given
-        context.  Always returns True if no condition was given.  '''
-        if self._active:
-            if not self._condition:
-                # We do not have a condition, so we always break
-                return True
-            return eval(self._condition, context)
+        self._type = type_
 
     def toggle(self):
         self._active = not self._active
@@ -50,10 +25,6 @@ class Breakpoint(object):
         self._active = False
 
     @property
-    def is_active(self):
-        return self._active
-
-    @property
     def id(self):
         return self._id
 
@@ -62,41 +33,98 @@ class Breakpoint(object):
         return self._filename
 
     @property
+    def active(self):
+        return self._active
+
+    @property
     def status(self):
-        return "active" if self.is_active else "not active"
-
-    @property
-    def location(self):
-        return self._location
-
-    @property
-    def abs_location(self):
-        return self._filename + ":" + str(self._location)
+        return "active" if self._active else "inactive"
 
     @property
     def breakpoint_type(self):
-        return self._bp_type
+        return self._type
+
+
+class Breakpoint(BaseBreakpoint):
+    """ Container class that holds one breakpoint and all its properties """
+
+    def __init__(self, id, lineno, filename, condition=""):
+        super().__init__(id, filename, BPType.COND if condition else BPType.LINE)
+        self._lineno = lineno
+        self._condition = condition
+
+    def __iter__(self):
+        return iter(
+            (
+                self.id,
+                self.breakpoint_type,
+                self.abs_location,
+                self.status,
+                self.condition,
+            )
+        )
+
+    def eval_condition(self, context):
+        """Evaluate the condition given in the constructor in the given
+        context.  Always returns True if no condition was given."""
+        if self.active:
+            if not self.condition:
+                # We do not have a condition, so we always break
+                return True
+            try:
+                return eval(self.condition, context)
+            except:
+                return False
+
+    @property
+    def lineno(self):
+        return self._lineno
+
+    @property
+    def abs_location(self):
+        return self.filename + ":" + str(self.lineno)
 
     @property
     def condition(self):
         return self._condition
 
-    def __str__(self):
-        s = f"{self._id}\
- {self._bp_type}\
- {self._filename}:{str(self._location)}"
+    def __repr__(self):
+        return f"Breakpoint<id: {self.id}, filename: {self.filename}, \
+lineno: {self.lineno} active: {self.active}, \
+breakpoint_type: {self.breakpoint_type}, condition: {self.condition}>"
 
-        if self._active:
-            s += " active"
-        else:
-            s += " not active"
+    __str__ = __repr__
 
-        if self._condition:
-            s += f" ({self._condition})"
 
-        return s
+class FunctionBreakpoint(BaseBreakpoint):
+    def __init__(self, id, funcname, filename, startline, endline):
+        super().__init__(id, filename, BPType.FUNC)
+        self._funcname = funcname
+        self._endline = endline
+        self._startline = startline
+
+    def __iter__(self):
+        return iter((self.id, self.breakpoint_type, self.abs_location, self.status, ""))
+
+    @property
+    def funcname(self):
+        return self._funcname
+
+    @property
+    def endline(self):
+        return self._endline
+
+    @property
+    def startline(self):
+        return self._startline
+
+    @property
+    def abs_location(self):
+        return self.filename + ":" + self.funcname
 
     def __repr__(self):
-        return f"Breakpoint<_id: {self._id}, _filename: {self._filename}, \
-_location: {self._location}, _condition: ({self._condition}), \
-_active: {self._active}, _bp_type: {self._bp_type}>"
+        return f"FunctionBreakpoint<id: {self.id}, filename: {self.filename}, \
+funcname: {self.funcname}, \
+active: {self.active}, breakpoint_type: {self.breakpoint_type}>"
+
+    __str__ = __repr__
