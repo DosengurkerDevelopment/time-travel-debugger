@@ -6,13 +6,14 @@ from test_module import module
 
 def list_comprehension_test(max):
     a = [x for x in range(1, max)]
+    b = a
     return a
 
 
 def test1(a):
     x = 100
     while a > 5:
-        id(a)
+        b = id(a)
         a -= 1
         x -= 1
     return
@@ -21,7 +22,7 @@ def test1(a):
 def id(a):
     b = 1234
     c = 12
-    return
+    return c
 
 
 def recursive_test(a):
@@ -37,17 +38,29 @@ def dict_test(a):
     return
 
 
-class Test(object):
+class Test:
     def __init__(self, a, b):
-        self.a = a
-        self.b = b
+        self.x = a + b
+        self.y = b - b
+        return
+
+class TestTest:
+    def __init__(self, a, b):
+        self.x = a + b
+        self.test = Test(a,b)
+        return
 
 
 def class_test(a, b):
-    a -= 1
     test = Test(a, b)
-    print(a)
+    return test
 
+def nested_classes_test(a, b):
+    testtest = TestTest(a, b)
+    return testtest
+
+def more_calls(a):
+    a = id(a) + id(a)
 
 def remove_html_markup(s):
     tag = False
@@ -71,6 +84,14 @@ def remove_html_markup(s):
 
     return out
 
+def lambda_test(a):
+    square = lambda x: x ** a
+    # sub = lambda x: x - a
+    b = square(a)
+    # b = sub(a) # breaks sourcemap, since lambda functions are always called
+    # <lambda> in the source map
+    return b
+
 
 def watch_test():
     a = 0
@@ -85,11 +106,14 @@ def watch_test():
 
 if __name__ == "__main__":
     with TimeTravelCLI():
-        # watch_test()
-        # id(12)
-        # test1(7)
-        # recursive_test(2)
-        # dict_test(123)
-        # list_comprehension_test(5)  #  not working
-        # class_test(1, 2)  #  not working
-        remove_html_markup("<tag>hello</tag>")
+         # watch_test()
+        # id(12) # works
+        #  test1(7) # works
+        # recursive_test(2) # works
+        #  dict_test(123) #  works
+        #  list_comprehension_test(5)  #  works
+         class_test(1, 2)  #  works
+         # lambda_test(2)
+        #  nested_classes_test(1,2) #  not working yet
+        # more_calls(1) #  works
+        # remove_html_markup("<tag>hello</tag>")
