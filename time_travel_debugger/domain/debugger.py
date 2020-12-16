@@ -2,7 +2,7 @@ import sys
 from typing import List
 from functools import wraps
 from ..model.watchpoint import Watchpoint
-from ..model.breakpoint import Breakpoint
+from ..model.breakpoint import Breakpoint, BreakpointType
 from ..model.exec_state_diff import ExecStateDiff, Action
 from copy import deepcopy
 
@@ -194,23 +194,16 @@ class TimeTravelDebugger(object):
 
     def is_line_breakpoint(self, line):
         for bp in self.breakpoints:
-            if bp.breakpoint_type == Breakpoint.FUNC:
-                continue
-            if bp.location == line:
+            if bp.lineno == line:
                 return True
         return False
 
     def is_at_line(self, line):
         return self.curr_line == line
 
-    def is_in_function(self, func, file):
-        return self.curr_diff.func_name == func and self.curr_diff.file_name == file
-
     def is_at_breakpoint(self, bp: Breakpoint):
-        if bp.breakpoint_type == Breakpoint.FUNC:
-            return self.is_in_function(bp.location, bp.filename)
-        else:
-            return self.is_at_line(bp.location)
+        print(bp.lineno)
+        self.curr_diff.file_name == bp.filename and self.is_at_line(bp.lineno)
 
     def start_debugger(self):
         """Interaction loop that is run after the execution of the code inside
@@ -387,7 +380,7 @@ class TimeTravelDebugger(object):
                 return b
         return None
 
-    def add_breakpoint(self, location, bp_type, filename="", cond=""):
+    def add_breakpoint(self, lineno=None, filename="", funcname="", cond=""):
         # Find next breakpoint id
         if not self.breakpoints:
             next_bp_id = 1
@@ -397,12 +390,15 @@ class TimeTravelDebugger(object):
         if not filename:
             filename = self.curr_diff.file_name
 
-        if bp_type != Breakpoint.FUNC:
-            if location:
-                location = int(location)
-            else:
-                location = self.curr_line
+        if lineno is None:
+            if not funcname:
+                return None
 
+            lineno = self._source_map[funcname]["start"] + 1
+            new_bp = Breakpoint(
+                next_bp_id, lineno, funcname=funcname, filename=filename
+            )
+        else:
             # Find the code object corresponding to this line number and
             # filename
             for source in self._source_map.values():
@@ -412,19 +408,20 @@ class TimeTravelDebugger(object):
                     code = source["code"]
                     end_line = starting_line + len(code)
 
-                    if not (starting_line < location < end_line):
+                    if not (starting_line < lineno < end_line):
                         continue
 
-                    line = code[location - starting_line].strip()
-                    while (not line or line.startswith("#")) and location < end_line:
-                        location += 1
-                        line = code[location - starting_line].strip()
+                    line = code[lineno - starting_line].strip()
+                    while (not line or line.startswith("#")) and lineno < end_line:
+                        lineno += 1
+                        line = code[lineno - starting_line].strip()
 
                     break
             else:
                 return None
 
-        new_bp = Breakpoint(next_bp_id, location, filename, bp_type, cond)
+            new_bp = Breakpoint(next_bp_id, lineno, filename, condition=cond)
+
         self.breakpoints.append(new_bp)
         return new_bp
 

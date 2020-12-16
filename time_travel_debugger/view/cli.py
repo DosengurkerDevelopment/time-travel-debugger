@@ -1,4 +1,3 @@
-import inspect
 import sys
 from pygments import highlight, lexers, formatters, styles
 
@@ -368,15 +367,14 @@ class TimeTravelCLI(object):
         # Find out which type of breakpoint we want to insert
         if not arg or arg.isnumeric():
             # Line breakpoint
-            res = self._debugger.add_breakpoint(arg, "line")
+            res = self._debugger.add_breakpoint(lineno=int(arg))
         elif ":" not in arg:
-            # Function breakpoint for different file
-            res = self._debugger.add_breakpoint(arg, "func")
+            # Function breakpoint for current file
+            res = self._debugger.add_breakpoint(funcname=arg)
         else:
-            filename, function_name = arg.split(":")
-            res = self._debugger.add_breakpoint(
-                function_name, "func", filename=filename
-            )
+            filename, funcname = arg.split(":")
+            res = self._debugger.add_breakpoint(funcname=funcname,
+                                                filename=filename)
 
         if res is not None:
             print(f"Breakpoint {res.id} added.")
