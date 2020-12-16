@@ -365,8 +365,9 @@ class TimeTravelDebugger(object):
         curr_diff = self.curr_diff
         curr_line = self._state_machine.curr_line
         # find next executable line. may be undefined if not found
-        target = self.find_next_executable_line(curr_line + 1, \
-                funcname=curr_diff.func_name)
+        target = self.find_next_executable_line(
+            curr_line + 1, funcname=curr_diff.func_name
+        )
         # continue to next line stepping over execution
         while not self._state_machine.curr_line == target and not self.at_end:
             # when we did not find the next valid line that is executable and
@@ -381,8 +382,9 @@ class TimeTravelDebugger(object):
         curr_diff = self.curr_diff
         curr_line = self._state_machine.curr_line
         # find next executable line. may be undefined if not found
-        target = self.find_prev_executable_line(curr_line - 1, \
-                funcname=curr_diff.func_name)
+        target = self.find_prev_executable_line(
+            curr_line - 1, funcname=curr_diff.func_name
+        )
         print(f"curr_line:{curr_line}")
         print(f"target:{target}")
         # continue to next line stepping over execution
@@ -563,7 +565,9 @@ class TimeTravelDebugger(object):
         return bool(line) and not line.startswith("#")
 
     def is_current_line_executable(self, line_number):
-        code, start = self.get_source_for_func()
+        source = self.get_source_for_func()
+        start = source["start"]
+        code = source["code"]
 
         try:
             return self.is_executable(code[line_number - start])
@@ -576,7 +580,9 @@ class TimeTravelDebugger(object):
         if source:
             starting_line, source_code = source["start"], source["code"]
         else:
-            starting_line, source_code = self.get_source_for_func(funcname)
+            source = self.get_source_for_func(funcname)
+            starting_line = source["start"]
+            source_code = source["code"]
 
         try:
             while not self.is_executable(source_code[line_number - starting_line]):
@@ -589,14 +595,15 @@ class TimeTravelDebugger(object):
         except IndexError:
             return None
 
-
     def find_prev_executable_line(
         self, line_number, source=None, filename=None, funcname=None
     ):
         if source:
             starting_line, source_code = source["start"], source["code"]
         else:
-            starting_line, source_code = self.get_source_for_func(funcname)
+            source = self.get_source_for_func(funcname)
+            starting_line = source["start"]
+            source_code = source["code"]
 
         try:
             while not self.is_executable(source_code[line_number - starting_line]):

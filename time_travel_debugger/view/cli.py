@@ -48,7 +48,6 @@ class TimeTravelCLI(object):
 
     def __exit__(self, *args, **kwargs):
         diffs, source_map = self._tracer.get_trace()
-        #  print(diffs)
         self._completer = CLICompleter(self.commands())
         readline.set_completer(self._completer.complete)
         readline.parse_and_bind("tab: complete")
@@ -62,7 +61,7 @@ class TimeTravelCLI(object):
         except KeyboardInterrupt:
             return
         except EOFError:
-            cmd = input("\rReally quit? [yN] ")
+            cmd = input("\rReally quit? [y/N] ")
             if cmd.lower() == 'y':
                 return 'quit'
             else:
@@ -105,7 +104,7 @@ class TimeTravelCLI(object):
         self._current_state = state
 
         if self._draw_update:
-            # os.system("clear")
+            os.system("clear")
             self.list_command()
 
             for wp in self._debugger.watchpoints:

@@ -112,8 +112,8 @@ if __name__ == "__main__":
         # recursive_test(2) # works
         #  dict_test(123) #  works
         #  list_comprehension_test(5)  #  works
-         class_test(1, 2)  #  works
+         # class_test(1, 2)  #  works
          # lambda_test(2)
         #  nested_classes_test(1,2) #  not working yet
         # more_calls(1) #  works
-        # remove_html_markup("<tag>hello</tag>")
+        remove_html_markup("<tag>hello</tag>")
