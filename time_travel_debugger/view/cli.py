@@ -46,7 +46,7 @@ class TimeTravelCLI(object):
 
     def __exit__(self, *args, **kwargs):
         diffs, source_map = self._tracer.get_trace()
-        print(diffs)
+        #  print(diffs)
         self._completer = CLICompleter(self.commands())
         readline.set_completer(self._completer.complete)
         readline.parse_and_bind("tab: complete")
