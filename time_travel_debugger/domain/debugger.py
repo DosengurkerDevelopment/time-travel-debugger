@@ -205,8 +205,8 @@ class StateMachine(object):
 
     @property
     def curr_depth(self):
-        func_name = self.curr_diff.func_name
-        return self._func_states._func_pointers[func_name]
+        func_states = self.curr_diff.get_function_states()
+        return len(func_states)-1
 
 
 class TimeTravelDebugger(object):
@@ -363,14 +363,19 @@ class TimeTravelDebugger(object):
         curr_depth = self._state_machine.curr_depth
         # only take in account return actions that happened in the same
         # function scope (in the same depth)
+        print(curr_depth)
         while (
             not (
-                curr_depth == self._state_machine.curr_depth
-                and self._state_machine.next_action == Action.RET
+                curr_depth == self._state_machine.curr_depth + 1
+                and self._state_machine.curr_diff.action == Action.RET
             )
             and not self._state_machine.at_end
         ):
             self._state_machine.forward()
+            print(curr_depth)
+
+        if not self._state_machine.at_end:
+            self._state_machine.backward()
 
     @trigger_update
     def start(self):
@@ -444,21 +449,40 @@ class TimeTravelDebugger(object):
                     break
             self._state_machine.backward()
 
-    def where(self, bound=sys.maxsize):
-        # print(self.curr_diff)
+    def get_callstack_safe_bounds(self,_min,_max):
+        """ get callstack with safe min and max bounds """
         func_states = self._state_machine.curr_diff.get_function_states()
-        # print(func_states)
         call_stack = []
         for state in func_states:
-            #  fun_code = self._source_map[state.fun_name]
-            call_stack = call_stack + [state.func_name]
-        # print(f"full call stack: {call_stack}")
-
-        # print(bound)
-        lower_bound = max(0, self._call_stack_depth - bound)
-        upper_bound = min(len(call_stack), self._call_stack_depth + bound)
+            call_stack = call_stack + [( state.func_name )]
+        lower_bound = max(0, _min)
+        upper_bound = min(len(call_stack), _max)
         # print(f"lower:{lower_bound}, upper:{upper_bound}")
-        return call_stack[lower_bound:upper_bound]
+        if _min == _max:
+            return [ call_stack[_min] ]
+        else:
+            return call_stack[lower_bound:upper_bound]
+
+
+    def where(self, bound=sys.maxsize):
+        _min = self._call_stack_depth - bound
+        _max = self._call_stack_depth + bound
+        return self.get_callstack_safe_bounds(_min, _max)
+
+    def up(self):
+        func_states = self._state_machine.curr_diff.get_function_states()
+        if self._call_stack_depth < len(func_states):
+            self._call_stack_depth +=1
+        _min = 0
+        _max = self._call_stack_depth + 1
+        return self.get_callstack_safe_bounds(_min, _max)
+
+    def down(self):
+        if self._call_stack_depth > 0:
+            self._call_stack_depth -=1
+        _min = 0
+        _max = self._call_stack_depth
+        return self.get_callstack_safe_bounds(_min, _max)
 
     def get_breakpoint(self, id):
         for b in self.breakpoints:
