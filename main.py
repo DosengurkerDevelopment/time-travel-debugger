@@ -44,10 +44,11 @@ class Test:
         self.y = b - b
         return
 
+
 class TestTest:
     def __init__(self, a, b):
         self.x = a + b
-        self.test = Test(a,b)
+        self.test = Test(a, b)
         return
 
 
@@ -55,12 +56,15 @@ def class_test(a, b):
     test = Test(a, b)
     return test
 
+
 def nested_classes_test(a, b):
     testtest = TestTest(a, b)
     return testtest
 
+
 def more_calls(a):
     a = id(a) + id(a)
+
 
 def remove_html_markup(s):
     tag = False
@@ -84,6 +88,7 @@ def remove_html_markup(s):
 
     return out
 
+
 def lambda_test(a):
     square = lambda x: x ** a
     # sub = lambda x: x - a
@@ -104,16 +109,33 @@ def watch_test():
     return a + b
 
 
+def nested_functions_test():
+    def f1():
+        f2()
+
+    def f2():
+        f3()
+
+    def f3():
+        f4()
+
+    def f4():
+        return
+
+    f1()
+
+
 if __name__ == "__main__":
     with TimeTravelCLI():
-         # watch_test()
-        # id(12) # works
-        #  test1(7) # works
-        # recursive_test(2) # works
+        #  watch_test()
+        #  id(12) # works
+        # test1(7)  # works
+        #  recursive_test(9) # works
+        #  nested_functions_test()
         #  dict_test(123) #  works
         #  list_comprehension_test(5)  #  works
-         # class_test(1, 2)  #  works
-         # lambda_test(2)
+        #  class_test(1, 2)  #  works
+        # lambda_test(2)
         #  nested_classes_test(1,2) #  not working yet
         # more_calls(1) #  works
         remove_html_markup("<tag>hello</tag>")
