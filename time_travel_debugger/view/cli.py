@@ -1,5 +1,8 @@
+import inspect
+import time
 import sys
 from pygments import highlight, lexers, formatters, styles
+import os
 
 # DO NOT REMOVE THIS
 import readline
@@ -85,6 +88,7 @@ class TimeTravelCLI(object):
         self._current_state = state
 
         if self._draw_update:
+            os.system('clear')
             self.list_command()
 
             for wp in self._debugger.watchpoints:
@@ -167,7 +171,13 @@ class TimeTravelCLI(object):
         if curr_vars:
             if not arg:
                 self.log(
-                    "\n".join([f"{var} = {repr(curr_vars[var])}" for var in curr_vars])
+                    "\n".join(
+                        [
+                            f"{var} = {repr(curr_vars[var])}"
+                            for var in curr_vars
+                            if not var.startswith("__")
+                        ]
+                    )
                 )
             else:
                 try:
@@ -340,8 +350,8 @@ class TimeTravelCLI(object):
     def watch_command(self, arg=""):
         """ Insert a watchpoint """
         if not arg:
-            table_template = "{:^15}|{:^6}"
-            header = table_template.format("id", "watched variable")
+            table_template = "{:^15}|{:^20}|{:^15}"
+            header = table_template.format("id", "watched expression", "value")
 
             print(header)
             print("-" * len(header))
@@ -367,14 +377,15 @@ class TimeTravelCLI(object):
         # Find out which type of breakpoint we want to insert
         if not arg or arg.isnumeric():
             # Line breakpoint
-            res = self._debugger.add_breakpoint(lineno=int(arg))
+            res = self._debugger.add_breakpoint(arg, "line")
         elif ":" not in arg:
-            # Function breakpoint for current file
-            res = self._debugger.add_breakpoint(funcname=arg)
+            # Function breakpoint for different file
+            res = self._debugger.add_breakpoint(arg, "func")
         else:
-            filename, funcname = arg.split(":")
-            res = self._debugger.add_breakpoint(funcname=funcname,
-                                                filename=filename)
+            filename, function_name = arg.split(":")
+            res = self._debugger.add_breakpoint(
+                function_name, "func", filename=filename
+            )
 
         if res is not None:
             print(f"Breakpoint {res.id} added.")

@@ -9,6 +9,7 @@ from ipywidgets import (
     VBox,
     Label,
     HTML,
+    Text,
 )
 from pygments import formatters, highlight, lexers
 
@@ -39,12 +40,17 @@ class GUI(object):
         self._lexer = lexers.get_lexer_by_name("Python")
         self._code_output = Output(layout=Layout(width="700px"))
         self._var_output = Output(layout=Layout(width="400px"))
-        self._code_pane = HBox([self._code_output, self._var_output])
         self._diff_slider = IntSlider(readout=False, layout=Layout(width="200px"))
+        self._diff_slider.observe(self.slider_command, names="value")
+
+        self._watchpoint_input = Text(layout=Layout(width="200px"))
+        self._add_watchpoint = Button(description="Watch expression")
+        self._add_watchpoint.on_click(self.watch_command)
 
         for key, item in self._BUTTONS.items():
             self.register_button(key, item["symbol"])
 
+        self._code_pane = HBox([self._code_output, self._var_output])
         buttons = VBox(
             [
                 HBox(self.get_buttons("backstep", "step")),
@@ -52,6 +58,7 @@ class GUI(object):
                 HBox(self.get_buttons("start", "finish")),
                 HBox(self.get_buttons("continue", "reverse")),
                 self._diff_slider,
+                HBox([self._add_watchpoint, self._watchpoint_input]),
             ]
         )
 
@@ -73,7 +80,6 @@ class GUI(object):
         self._debugger = TimeTravelDebugger(diffs, source_map, self.update)
         self._debugger.start_debugger()
         self._diff_slider.max = len(diffs)
-        self._diff_slider.observe(self.slider_command, names="value")
 
     def get_button(self, key):
         return self._BUTTONS[key]["button"]
@@ -107,6 +113,7 @@ class GUI(object):
         with self._var_output:
             clear_output(wait=True)
             self.print_command()
+            self.list_watch_command()
 
     def log(self, *objects, sep=" ", end="\n", flush=False):
         """Like print(), but always sending to file given at initialization,
@@ -123,7 +130,13 @@ class GUI(object):
 
         if not arg:
             self.log(
-                "\n".join([f"{var} = {repr(curr_vars[var])}" for var in curr_vars])
+                "\n".join(
+                    [
+                        f"{var} = {repr(curr_vars[var])}"
+                        for var in curr_vars
+                        if not var.startswith("__")
+                    ]
+                )
             )
         else:
             try:
@@ -195,22 +208,23 @@ class GUI(object):
         """ Continue execution backward until a breakpoint is hit """
         self._debugger.reverse()
 
-    def watch_command(self, arg=""):
+    def watch_command(self, change):
         """ Insert a watchpoint """
-        if not arg:
-            table_template = "{:^15}|{:^6}"
-            header = table_template.format("id", "watched variable")
-
-            print(header)
-            print("-" * len(header))
-            for wp in self._debugger.watchpoints:
-                print(table_template.format(*wp))
+        arg = self._watchpoint_input.value
+        res = self._debugger.add_watchpoint(arg)
+        if not res:
+            print("Could not add watchpoint.")
         else:
-            res = self._debugger.add_watchpoint(arg)
-            if not res:
-                print("Could not add watchpoint.")
-            else:
-                print(f"Added watchpoint with id {res.id}.")
+            print(f"Added watchpoint with id {res.id}.")
+
+    def list_watch_command(self):
+        table_template = "{:^6}|{:^20}|{:^20}"
+        header = table_template.format("id", "watched expression", "value")
+
+        print(header)
+        print("-" * len(header))
+        for wp in self._debugger.watchpoints:
+            print(table_template.format(*wp))
 
     def unwatch_command(self, arg=""):
         """ Remove a watchpoint """

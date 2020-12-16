@@ -106,10 +106,10 @@ class TimeTravelTracer(object):
         #  if frame.f_code.co_name not in self._source_map:
         self._source_map[frame.f_code.co_name] = {
             "start": startline, "code": code, "filename": filename}
-        print(f"{frame.f_lineno}: {code[frame.f_lineno - startline]}")
-        print(f"EVENT:{event}")
-        print(f"last_vars:{self._last_vars}")
-        print(f"locals:{frame.f_locals}")
+        # print(f"{frame.f_lineno}: {code[frame.f_lineno - startline]}")
+        # print(f"EVENT:{event}")
+        # print(f"last_vars:{self._last_vars}")
+        # print(f"locals:{frame.f_locals}")
         if event == "call":
             # we dont want to directly do_call, since we always have one line,
             # that does nothing after call

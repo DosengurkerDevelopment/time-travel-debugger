@@ -2,7 +2,7 @@ import sys
 from typing import List
 from functools import wraps
 from ..model.watchpoint import Watchpoint
-from ..model.breakpoint import Breakpoint, BreakpointType
+from ..model.breakpoint import Breakpoint
 from ..model.exec_state_diff import ExecStateDiff, Action
 from copy import deepcopy
 
@@ -28,7 +28,6 @@ class StateMachine(object):
         if not self.at_end:
             self._exec_point += 1
             new_diff = self.curr_diff
-            print(new_diff)
             if new_diff.action == Action.CALL:
                 # called new function, so create new absolute state with added
                 # variables (parameters)
@@ -143,10 +142,10 @@ class TimeTravelDebugger(object):
         def nfunc(self, *args, **kwargs):
             ret = func(self, *args, **kwargs)
 
-            state = self._state_machine.curr_state
+            state = self.curr_state
 
             for wp in self.watchpoints:
-                wp.update(state.get(wp.var_name, None))
+                wp.update(state)
 
             self._update(state)
             self._call_stack_depth = self._state_machine.curr_diff.depth
@@ -194,16 +193,23 @@ class TimeTravelDebugger(object):
 
     def is_line_breakpoint(self, line):
         for bp in self.breakpoints:
-            if bp.lineno == line:
+            if bp.breakpoint_type == Breakpoint.FUNC:
+                continue
+            if bp.location == line:
                 return True
         return False
 
     def is_at_line(self, line):
         return self.curr_line == line
 
+    def is_in_function(self, func, file):
+        return self.curr_diff.func_name == func and self.curr_diff.file_name == file
+
     def is_at_breakpoint(self, bp: Breakpoint):
-        print(bp.lineno)
-        self.curr_diff.file_name == bp.filename and self.is_at_line(bp.lineno)
+        if bp.breakpoint_type == Breakpoint.FUNC:
+            return self.is_in_function(bp.location, bp.filename)
+        else:
+            return self.is_at_line(bp.location)
 
     def start_debugger(self):
         """Interaction loop that is run after the execution of the code inside
@@ -359,19 +365,19 @@ class TimeTravelDebugger(object):
             self._state_machine.backward()
 
     def where(self, bound=sys.maxsize):
-        print(self.curr_diff)
+        # print(self.curr_diff)
         func_states = self._state_machine.curr_diff.get_function_states()
-        print(func_states)
+        # print(func_states)
         call_stack = []
         for state in func_states:
             #  fun_code = self._source_map[state.fun_name]
             call_stack = call_stack + [state.func_name]
-        print(f"full call stack: {call_stack}")
+        # print(f"full call stack: {call_stack}")
 
-        print(bound)
+        # print(bound)
         lower_bound = max(0, self._call_stack_depth - bound)
         upper_bound = min(len(call_stack), self._call_stack_depth + bound)
-        print(f"lower:{lower_bound}, upper:{upper_bound}")
+        # print(f"lower:{lower_bound}, upper:{upper_bound}")
         return call_stack[lower_bound:upper_bound]
 
     def get_breakpoint(self, id):
@@ -380,7 +386,7 @@ class TimeTravelDebugger(object):
                 return b
         return None
 
-    def add_breakpoint(self, lineno=None, filename="", funcname="", cond=""):
+    def add_breakpoint(self, location, bp_type, filename="", cond=""):
         # Find next breakpoint id
         if not self.breakpoints:
             next_bp_id = 1
@@ -390,15 +396,15 @@ class TimeTravelDebugger(object):
         if not filename:
             filename = self.curr_diff.file_name
 
-        if lineno is None:
-            if not funcname:
-                return None
+        if bp_type == Breakpoint.FUNC and location not in self._source_map:
+            return None
 
-            lineno = self._source_map[funcname]["start"] + 1
-            new_bp = Breakpoint(
-                next_bp_id, lineno, funcname=funcname, filename=filename
-            )
-        else:
+        if bp_type != Breakpoint.FUNC:
+            if location:
+                location = int(location)
+            else:
+                location = self.curr_line
+
             # Find the code object corresponding to this line number and
             # filename
             for source in self._source_map.values():
@@ -408,20 +414,19 @@ class TimeTravelDebugger(object):
                     code = source["code"]
                     end_line = starting_line + len(code)
 
-                    if not (starting_line < lineno < end_line):
+                    if not (starting_line < location < end_line):
                         continue
 
-                    line = code[lineno - starting_line].strip()
-                    while (not line or line.startswith("#")) and lineno < end_line:
-                        lineno += 1
-                        line = code[lineno - starting_line].strip()
+                    line = code[location - starting_line].strip()
+                    while (not line or line.startswith("#")) and location < end_line:
+                        location += 1
+                        line = code[location - starting_line].strip()
 
                     break
             else:
                 return None
 
-            new_bp = Breakpoint(next_bp_id, lineno, filename, condition=cond)
-
+        new_bp = Breakpoint(next_bp_id, location, filename, bp_type, cond)
         self.breakpoints.append(new_bp)
         return new_bp
 
@@ -452,19 +457,15 @@ class TimeTravelDebugger(object):
                 return b
         return None
 
-    def add_watchpoint(self, var_name):
+    def add_watchpoint(self, expression):
         # Find next breakpoint id
         if not self.watchpoints:
             next_wp_id = 1
         else:
             next_wp_id = max([b.id for b in self.watchpoints]) + 1
 
-        if var_name in self.curr_state:
-            initial_value = self.curr_state[var_name]
-        else:
-            initial_value = None
-
-        new_wp = Watchpoint(next_wp_id, var_name, initial_value)
+        new_wp = Watchpoint(next_wp_id, expression)
+        new_wp.init(self.curr_state)
         self.watchpoints.append(new_wp)
         return new_wp
 

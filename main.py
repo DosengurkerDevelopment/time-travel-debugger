@@ -51,12 +51,10 @@ def remove_html_markup(s):
     quote = False
     out = ""
 
-    dict_test(s)
+    test1(14)
 
-
-
-    #Help 
-    #blub
+    # Help
+    # blub
 
     for c in s:
         if c == "<" and not quote:
@@ -71,12 +69,24 @@ def remove_html_markup(s):
     return out
 
 
+def watch_test():
+    a = 0
+    b = 0
+    for i in range(10):
+        if i % 2:
+            a += 1
+        else:
+            b += 1
+    return a + b
+
+
 if __name__ == "__main__":
     with TimeTravelCLI():
+        watch_test()
         #  id(12)
         # test1(7)
         #  recursive_test(2)
         #  dict_test(123)
         # list_comprehension_test(5) #  not working
         #  class_test(1, 2)  #  not working
-        remove_html_markup("<tag>hello</tag>")
+        # remove_html_markup("<tag>hello</tag>")
