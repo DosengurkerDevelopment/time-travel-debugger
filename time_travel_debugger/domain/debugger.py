@@ -326,42 +326,36 @@ class TimeTravelDebugger(object):
 
     @trigger_update
     def next(self):
-        # TODO: check if next line is executable at all
         curr_diff = self.curr_diff
-        code_lines = self._source_map[curr_diff.func_name]["code"]
-        start_line = self._source_map[curr_diff.func_name]["start"]
-        target = self._state_machine.curr_line + 1
-        relative_lineno = target - start_line
-        # check if at end of function
-        if relative_lineno < len(code_lines):
-            # continue to next line stepping over execution
-            while (
-                not self._state_machine.curr_line == target
-                and not self._state_machine.at_end
-            ):
-                self._state_machine.forward()
-        else:
-            # step out of function to caller
+        curr_line = self._state_machine.curr_line
+        # find next executable line. may be undefined if not found
+        target = self.find_next_executable_line(curr_line + 1, \
+                funcname=curr_diff.func_name)
+        # continue to next line stepping over execution
+        while not self._state_machine.curr_line == target and not self.at_end:
+            # when we did not find the next valid line that is executable and
+            # the current line was after return we stay there
+            if not target and self.curr_diff.action == Action.RET:
+                break
+            # otherwise continue until we found a target or we hit end
             self._state_machine.forward()
 
     @trigger_update
     def previous(self):
-        # TODO: check if previous line is executable at all
-        target = self._state_machine.curr_line - 1
         curr_diff = self.curr_diff
-
-        start_line = self._source_map[curr_diff.func_name]["start"]
-        relative_lineno = target - start_line
-        # check if at the beginning of function call
-        if relative_lineno > 0:
-            # step one line back stepping over execution
-            while (
-                not self._state_machine.curr_line == target
-                and not self._state_machine.at_start
-            ):
-                self._state_machine.backward()
-        else:
-            # step back out of function
+        curr_line = self._state_machine.curr_line
+        # find next executable line. may be undefined if not found
+        target = self.find_prev_executable_line(curr_line - 1, \
+                funcname=curr_diff.func_name)
+        print(f"curr_line:{curr_line}")
+        print(f"target:{target}")
+        # continue to next line stepping over execution
+        while not self._state_machine.curr_line == target and not self.at_start:
+            # when we did not find the previous valid line that is executable and
+            # the current line was before call we stay there
+            if not target and self._state_machine.prev_action == Action.CALL:
+                break
+            # otherwise continue until we found a target or we hit end
             self._state_machine.backward()
 
     @trigger_update
@@ -533,16 +527,41 @@ class TimeTravelDebugger(object):
     def find_next_executable_line(
         self, line_number, source=None, filename=None, funcname=None
     ):
-        source = source or self.get_source_for_func(funcname)
-        starting_line = source["start"]
-        code = source["code"]
+        if source:
+            starting_line, source_code = source["start"], source["code"]
+        else:
+            starting_line, source_code = self.get_source_for_func(funcname)
 
         try:
-            while not self.is_executable(code[line_number - starting_line]):
+            while not self.is_executable(source_code[line_number - starting_line]):
                 line_number += 1
-            return line_number
+            # function definition is not executable
+            if line_number == starting_line:
+                return None
+            else:
+                return line_number
         except IndexError:
-            return -1
+            return None
+
+
+    def find_prev_executable_line(
+        self, line_number, source=None, filename=None, funcname=None
+    ):
+        if source:
+            starting_line, source_code = source["start"], source["code"]
+        else:
+            starting_line, source_code = self.get_source_for_func(funcname)
+
+        try:
+            while not self.is_executable(source_code[line_number - starting_line]):
+                line_number -= 1
+            # function definition is not executable
+            if line_number == starting_line:
+                return None
+            else:
+                return line_number
+        except IndexError:
+            return None
 
     def remove_breakpoint(self, id):
         b = self.get_breakpoint(id)
