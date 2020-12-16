@@ -57,7 +57,17 @@ class TimeTravelCLI(object):
         self.execute()
 
     def get_input(self):
-        cmd = input("(debugger) ")
+        try:
+            cmd = input("(debugger) ")
+        except KeyboardInterrupt:
+            return
+        except EOFError:
+            cmd = input("\rReally quit? [yN] ")
+            if cmd.lower() == 'y':
+                return 'quit'
+            else:
+                return None
+
         if not cmd:
             return self._last_command
         else:
@@ -69,6 +79,11 @@ class TimeTravelCLI(object):
 
     def execute(self):
         command = self.get_input()
+
+        if not command:
+            print("\r")
+            self.execute()
+
         sep = command.find(" ")
         if sep > 0:
             cmd = command[:sep].strip()
@@ -431,3 +446,6 @@ class TimeTravelCLI(object):
             self.log("Cond needs a line number and a condition")
             return
         self._debugger.add_breakpoint(lineno=lineno, cond=condition)
+
+    def quit_command(self, arg=""):
+        sys.exit(1)
