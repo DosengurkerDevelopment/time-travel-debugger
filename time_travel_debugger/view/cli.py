@@ -1,14 +1,15 @@
 import inspect
-import time
-import sys
-from pygments import highlight, lexers, formatters, styles
 import os
 
 # DO NOT REMOVE THIS
 import readline
+import sys
 
-from ..domain.tracer import TimeTravelTracer
+import colorama
+from pygments import formatters, highlight, lexers, styles
+
 from ..domain.debugger import TimeTravelDebugger
+from ..domain.tracer import TimeTravelTracer
 from .completer import CLICompleter
 
 # TODO: Signal handling on Ctrl-C, Ctrl-D
@@ -88,7 +89,7 @@ class TimeTravelCLI(object):
         self._current_state = state
 
         if self._draw_update:
-            os.system('clear')
+            os.system("clear")
             self.list_command()
 
             for wp in self._debugger.watchpoints:
@@ -250,11 +251,14 @@ class TimeTravelCLI(object):
 
         for ln, line in enumerate(lines, start=line_number + top):
             spacer = " "
+            color = ""
             if ln == display_current_line:
                 spacer = ">"
+                color = colorama.Back.YELLOW
             elif self._debugger.is_line_breakpoint(ln):
                 spacer = "#"
-            print(f"{ln:4}{spacer} {line}")
+                color = colorama.Back.RED
+            print(color + f"{ln:4}{spacer} {line}" + colorama.Style.RESET_ALL)
 
     def next_command(self, arg=""):
         """ Step to the next source line """
