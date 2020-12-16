@@ -288,7 +288,8 @@ class TimeTravelDebugger(object):
         return self.curr_line == line
 
     def is_in_function(self, func, file):
-        return self.curr_diff.func_name == func and self.curr_diff.file_name == file
+        # Forward:
+        pass
 
     def is_at_breakpoint(self, bp: Breakpoint):
         if bp.breakpoint_type == Breakpoint.FUNC:
@@ -492,28 +493,56 @@ class TimeTravelDebugger(object):
 
             # Find the code object corresponding to this line number and
             # filename
-            for source in self._source_map.values():
-                if source["filename"] == filename:
-                    # TODO: Encapsulate this in get_source_for_line
-                    starting_line = source["start"]
-                    code = source["code"]
-                    end_line = starting_line + len(code)
-
-                    if not (starting_line < location < end_line):
-                        continue
-
-                    line = code[location - starting_line].strip()
-                    while (not line or line.startswith("#")) and location < end_line:
-                        location += 1
-                        line = code[location - starting_line].strip()
-
-                    break
-            else:
-                return None
+            source = self.find_source_for_location(filename, location)
+            location, line = self.find_next_executable_line(location, source)
 
         new_bp = Breakpoint(next_bp_id, location, filename, bp_type, cond)
         self.breakpoints.append(new_bp)
         return new_bp
+
+    def get_source_for_func(self, funcname=None):
+        source = self._source_map[funcname or self.curr_diff.func_name]
+        return source["start"], source["code"]
+
+    def find_source_for_location(self, filename, line_number):
+        for func_name, source in self._source_map.items():
+            if source["filename"] == filename:
+                starting_line = source["start"]
+                code = source["code"]
+                end_line = starting_line + len(code)
+
+                if not (starting_line < line_number < end_line):
+                    continue
+
+                return source
+        else:
+            return None
+
+    def is_executable(self, line):
+        line = line.strip()
+        return bool(line) and not line.startswith("#")
+
+    def is_current_line_executable(self, line_number):
+        code, start = self.get_source_for_func()
+
+        try:
+            return self.is_executable(code[line_number - start])
+        except IndexError:
+            return False
+
+    def find_next_executable_line(
+        self, line_number, source=None, filename=None, funcname=None
+    ):
+        source = source or self.get_source_for_func(funcname)
+        starting_line = source["start"]
+        code = source["code"]
+
+        try:
+            while not self.is_executable(code[line_number - starting_line]):
+                line_number += 1
+            return line_number
+        except IndexError:
+            return -1
 
     def remove_breakpoint(self, id):
         b = self.get_breakpoint(id)
