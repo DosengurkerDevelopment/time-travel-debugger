@@ -205,7 +205,8 @@ class StateMachine(object):
 
     @property
     def curr_depth(self):
-        return self._curr_state_ptr
+        func_name = self.curr_diff.func_name
+        return self._func_states._func_pointers[func_name]
 
 
 class TimeTravelDebugger(object):
