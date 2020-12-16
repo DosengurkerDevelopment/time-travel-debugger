@@ -132,8 +132,8 @@ class StateMachine(object):
             else:
                 raise Exception(f"Invalid Action: '{new_diff.action}'")
             if self.next_action == Action.RET:
-                # skip the implicit return statement and the line of callee
-                self._exec_point += 2
+                # skip the implicit return statement
+                self._exec_point += 1
             #  print(self._func_states)
 
     def backward(self):
