@@ -167,6 +167,13 @@ class TimeTravelCLI(object):
     def print_command(self, arg=""):
         """Print all variables or pass an expression to evaluate in the
         current context"""
+
+        def prettify_classes(obj):
+            if hasattr(obj, '__dict__'):
+                return vars(obj)  
+            else :
+                return repr(obj)
+
         # Shorthand such that the following code is not as lengthy
         curr_vars = self._current_state
         if curr_vars:
@@ -174,7 +181,7 @@ class TimeTravelCLI(object):
                 self.log(
                     "\n".join(
                         [
-                            f"{var} = {repr(curr_vars[var])}"
+                            f"{var} = {prettify_classes(curr_vars[var])}"
                             for var in curr_vars
                             if not var.startswith("__")
                         ]
@@ -182,7 +189,7 @@ class TimeTravelCLI(object):
                 )
             else:
                 try:
-                    self.log(f"{arg} = {repr(eval(arg, globals(), curr_vars))}")
+                    self.log(f"{arg} = {prettify_classes(eval(arg, globals(), curr_vars))}")
                 except Exception as err:
                     self.log(f"{err.__class__.__name__}: {err}")
 
