@@ -29,6 +29,7 @@ class TimeTravelCLI(object):
         "reverse",
         "until",
         "step",
+        "start",
     ]
 
     def __init__(self, file=sys.stdout):
