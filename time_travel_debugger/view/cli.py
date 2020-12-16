@@ -353,11 +353,15 @@ class TimeTravelCLI(object):
 
     def up_command(self, arg=""):
         """ Move up the call stack """
-        pass
+        call_stack = self._debugger.up()
+        print(call_stack)
+
 
     def down_command(self, arg=""):
         """ Move down the call stack """
-        pass
+        call_stack = self._debugger.down()
+        print(call_stack)
+
 
     def watch_command(self, arg=""):
         """ Insert a watchpoint """
