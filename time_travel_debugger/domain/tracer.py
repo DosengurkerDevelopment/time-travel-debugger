@@ -15,6 +15,7 @@ class TimeTravelTracer(object):
         self._diffs: List[ExecStateDiff] = []
         self._source_map = {}
         self._last_vars = []
+        self._prev_action = None
         self._should_call = False
         self._root_func_name = ""
 
@@ -36,11 +37,14 @@ class TimeTravelTracer(object):
             self.traceit(frame, event, arg)
         return self._traceit
 
-    def _do_return(self):
-        assert len(self._last_vars) > 0
+    def _do_return(self, frame):
+        # return statements also could update variables:
+        self._do_update(frame)
         new_state = self._current_diff.ret()
         self._diffs.append(new_state)
         self._last_vars.pop()
+        self._prev_action = Action.RET
+        #  print(f"RETURN")
 
     def _do_call(self, frame):
         #  self._diffs.pop()
@@ -51,11 +55,10 @@ class TimeTravelTracer(object):
         self._diffs.append(new_state)
         locals = frame.f_locals.copy()
         self._last_vars.append(locals)
+        self._prev_action = Action.CALL
+        #  print(f"CALL")
 
     def _do_update(self, frame):
-        assert (
-            len(self._last_vars) > 0
-        ), f"all actions:{[x.action for x in self._diffs]}"
         # save old scope for the update on _exec_state_diff
         #  prev_vars = self._last_vars[-1]
         #  changed = self._changed_vars(frame.f_locals.copy())
@@ -66,13 +69,8 @@ class TimeTravelTracer(object):
         self._diffs.append(new_state)
         locals = frame.f_locals.copy()
         self._last_vars[-1] = locals
-
-    @property
-    def _last_action(self):
-        if len(self._diffs) > 0:
-            return self._diffs[-1].action
-        else:
-            return None
+        self._prev_action = Action.UPDATE
+        #  print(f"UPDATE")
 
     @property
     def root_func_name(self):
@@ -106,15 +104,19 @@ class TimeTravelTracer(object):
         #  if frame.f_code.co_name not in self._source_map:
         self._source_map[frame.f_code.co_name] = {
             "start": startline, "code": code, "filename": filename}
-        print(f"{frame.f_lineno}: {code[frame.f_lineno - startline]}")
-        print(f"EVENT:{event}")
-        print(f"last_vars:{self._last_vars}")
-        print(f"locals:{frame.f_locals}")
+        #  print(f"{frame.f_lineno}: {code[frame.f_lineno - startline]}")
+        #  print(f"EVENT:{event}")
+        #  print(f"last_vars:{self._last_vars}")
+        #  print(f"locals:{frame.f_locals}")
+        # in case we returned from functin last line, we want to skip the
+        # line of caller
+        #  if self._prev_action == Action.RET:
+            #  self._prev_action = None
         if event == "call":
-            # we dont want to directly do_call, since we always have one line,
-            # that does nothing after call
+            # we dont want to directly do_call, since we want to skip the
+            # function definition           
             # In order to get rid of this, we always ignore the line where a
-            # call happens and postpone this call to one trace stop later
+            # call happens and postpone this call to one line later
             self._should_call = True
         elif self._should_call:
             self._do_call(frame)
@@ -124,7 +126,7 @@ class TimeTravelTracer(object):
             #  print(f"UPDATE")
         elif event == "return":
             #  self._do_update(frame)
-            self._do_return()
+            self._do_return(frame)
             #  print(f"RETURN")
 
         # print(f"vars:{self._diffs[-1]}")

@@ -19,6 +19,7 @@ def test1(a):
 def id(a):
     b = 1234
     c = 12
+    return
 
 
 def recursive_test(a):
@@ -74,4 +75,4 @@ if __name__ == "__main__":
         #  dict_test(123)
         # list_comprehension_test(5) #  not working
         #  class_test(1, 2)  #  not working
-        remove_html_markup("<tag>hello</tag>")
+        #  remove_html_markup("<tag>hello</tag>")

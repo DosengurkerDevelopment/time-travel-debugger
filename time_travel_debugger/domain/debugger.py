@@ -7,14 +7,106 @@ from ..model.exec_state_diff import ExecStateDiff, Action
 from copy import deepcopy
 
 
+class FunctionStates(object):
+    """Helper class for manaing the absolut states of functions"""
+
+    def __init__(self):
+        # maps functions to list of stored scopes
+        self._func_scopes = {}
+        #  maps the function name to the current number
+        #  of 'open' iterations for that function
+        self._func_pointers = {} 
+
+    def __str__(self):
+        res = ""
+        for k,v in self._func_scopes.items():
+            res += f"\t{k}: {v} \n"
+        return res
+
+    __repr__ = __str__
+
+    def __getitem__(self, func_name):
+        func_pointer = self._func_pointers[func_name]
+        #  print(f"func_pointer:{func_pointer}")
+        res = self._func_scopes[func_name][func_pointer]
+        #  print(f"found item:{res}")
+        return res
+
+    def call(self,func_name, params):
+        """Stores a new scope with its parameters after the call for a function"""
+        #  print(f"CALL: {func_name} - params:{params}")
+        try:
+            #  check if functions scope already exists in map
+            self._func_scopes[func_name] 
+        except KeyError:
+            # if not create it
+            self._func_scopes[func_name] = [{}]
+        # then append the parameters to it as a new scope
+        self._func_scopes[func_name].append(params.copy())
+        try:
+            self._func_pointers[func_name] += 1
+        except KeyError:
+            self._func_pointers[func_name] = 1
+
+    def ret(self, func_name):
+        """ this function does nothing """
+        #  print(f"RETURN: {func_name}")
+        pass
+
+    def update(self,func_name, changes):
+        """update variables of the current scope for a function"""
+        #  print(f"UPDATE {func_name} - changes:{changes}")
+        self._func_scopes[func_name][-1].update(changes.copy())
+
+    def revert_call(self, func_name):
+        """revert a call by deleting the most recent scope of the function"""
+        #  print(f"REVERT_CALL: {func_name}")
+        self._func_pointers[func_name] -= 1
+        self._func_scopes[func_name].pop()
+
+    def revert_ret(self, func_name):
+        """ this function does nothing """
+        #  print(f"REVERT_RETURN: {func_name}")
+        # returned from function previously, so go to absolute state
+        # one scope higher (which exists, since we rewind in history,
+        # so we have created this scope in a previous execution)
+        #  self._func_pointers[func_name] += 1
+        pass
+
+    def revert_update(self, func_name, added, updated):
+        """ revert added and updated variables from previous line in function """
+        #  print(f"REVERT_UPDATE: {func_name} - added:{added} - updated:{updated}")
+        # if previous action was return then step to return statement
+        # ,since we dont want to step back to the point after
+        # the function execution
+
+        #  if self.curr_diff.action == Action.RET:
+            #  self._exec_point -= 1
+            #  self._curr_state_ptr += 1
+            #  prev_diff = deepcopy(self.curr_diff)
+        current_scope = self._func_pointers[func_name]
+        #  print(f"current_scope of {func_name}:{current_scope}")
+        before_update = {key:value.before for (key,value) in updated.items()}
+        # revert updates
+        self._func_scopes[func_name][-1].update(before_update)
+        # and delete added vars
+        for k in added:
+            try:
+                self._func_scopes[func_name][current_scope].pop(k)
+            except:
+                pass
+
+
+
 class StateMachine(object):
     """Contains the absolute state of all defined variables of all currently
     active functions"""
 
     def __init__(self, diffs):
+        # the diffs we computed in the tracer
         self._exec_state_diffs = diffs
-        self._curr_states = [{}]
-        self._curr_state_ptr = 0
+        # the function state manager
+        self._func_states = FunctionStates()
         #  start at -1 and step into first diff in start_debugger
         self._exec_point = 0
         # True if we are at the start of the current frame
@@ -26,60 +118,51 @@ class StateMachine(object):
         """steps one step forward if possible and computes the current state"""
 
         if not self.at_end:
+            # step one step forward
+            prev_diff = deepcopy(self.curr_diff)
             self._exec_point += 1
-            new_diff = self.curr_diff
-            print(new_diff)
+            new_diff = deepcopy(self.curr_diff)
+            # compute state of function scopes
             if new_diff.action == Action.CALL:
-                # called new function, so create new absolute state with added
-                # variables (parameters)
-                self._curr_states.append(new_diff.changed)
-                self._curr_state_ptr += 1
+                params = new_diff.changed
+                self._func_states.call(new_diff.func_name, params)
             elif new_diff.action == Action.RET:
-                # returned from function, so step down to previous scope
-                # dont delete old scope though, since we might need it, when
-                # going back in time
-                self._curr_state_ptr -= 1
-                #  self._exec_point += 1
-                #  diff = deepcopy(self.curr_diff)
+                self._func_states.ret(new_diff.func_name)
             elif new_diff.action == Action.UPDATE:
-                # depth stayed the same, so just update the state
-                self.curr_state.update(new_diff.changed.copy())
+                self._func_states.update(new_diff.func_name,new_diff.changed.copy())
             else:
                 raise Exception(f"Invalid Action: '{new_diff.action}'")
+            if self.next_action == Action.RET:
+                # skip the implicit return statement and the line of callee
+                self._exec_point +=2
+            #  print(self._func_states)
 
     def backward(self):
         """steps one step backwards if possible and computes the current state"""
 
         # Check whether we reached the start of the program
         if not self.at_start:
+
             prev_diff = deepcopy(self.curr_diff)
+            # step one step backwards
             self._exec_point -= 1
+            new_diff = deepcopy(self.curr_diff)
+            # compute state of function scopes
             if prev_diff.action == Action.CALL:
-                # called new function previously, so rewind by deleting current
-                # context (which is safe, since when going forward we will
-                # recreate it)
-                self._curr_state_ptr -= 1
-                self._curr_states.pop()
+                self._func_states.revert_call(prev_diff.func_name)
             elif prev_diff.action == Action.RET:
-                # returned from function previously, so go to absolute state
-                # one scope higher (which exists, since we rewind in history,
-                # so we have created this scope in a previous execution)
-                self._curr_state_ptr += 1
+                self._func_states.revert_ret(new_diff.func_name)
             elif prev_diff.action == Action.UPDATE:
-                # if previous action was return then step to return statement
-                # ,since we dont want to step back to the point after
-                # the function execution
-                if self.curr_diff.action == Action.RET:
-                    self._exec_point -= 1
-                    self._curr_state_ptr += 1
-                    prev_diff = deepcopy(self.curr_diff)
-                # depth stayed the same, so rewind updated vars
-                self.curr_state.update(prev_diff.changed)
-                # and delete added vars
-                for k in prev_diff.added:
-                    self.curr_state.pop(k)
+                self._func_states.revert_update(new_diff.func_name,\
+                        prev_diff.added.copy(), prev_diff.updated.copy())
             else:
-                raise Exception(f"Invalid Action: '{prev_diff.action}'")
+                raise Exception(f"Invalid Action: '{new_diff.action}'")
+
+            if new_diff.action == Action.RET:
+                # skip the implicit return statement and the line of callee
+                self._exec_point -=2
+
+            #  print(self._func_states)
 
 
     @property
@@ -120,7 +203,7 @@ class StateMachine(object):
 
     @property
     def curr_state(self):
-        return self._curr_states[self._curr_state_ptr]
+        return self._func_states[self.curr_diff.func_name]
 
     @property
     def curr_depth(self):
@@ -128,7 +211,8 @@ class StateMachine(object):
 
 
 class TimeTravelDebugger(object):
-    def __init__(self, exec_state_diffs: List[ExecStateDiff], source_map, update):
+    def __init__(self, exec_state_diffs: List[ExecStateDiff],
+            source_map, update):
         # Dictionary that contains source code objects for each frame
         self._source_map = source_map
         # The current state of variables:
