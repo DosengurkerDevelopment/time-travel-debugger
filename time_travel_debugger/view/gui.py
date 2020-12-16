@@ -1,3 +1,4 @@
+import colorama
 from IPython.core.display import clear_output, display, Markdown
 from ipywidgets import (
     AppLayout,
