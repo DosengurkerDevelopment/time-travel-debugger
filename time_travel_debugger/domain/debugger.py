@@ -158,9 +158,9 @@ class StateMachine(object):
             else:
                 raise Exception(f"Invalid Action: '{new_diff.action}'")
 
-            if new_diff.action == Action.RET:
+            if prev_diff.action == Action.RET:
                 # skip the implicit return statement and the line of callee
-                self._exec_point -= 2
+                self._exec_point -= 1
 
             #  print(self._func_states)
 
