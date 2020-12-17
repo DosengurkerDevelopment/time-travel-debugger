@@ -4,14 +4,30 @@ from pprint import pprint
 
 import colorama
 from IPython.core.display import Javascript, Markdown, clear_output, display
-from ipywidgets import (HTML, AppLayout, Button, GridspecLayout, HBox,
-                        IntSlider, Label, Layout, Output, Text, VBox)
+from ipywidgets import (
+    jsdlink,
+    ToggleButton,
+    Play,
+    HTML,
+    AppLayout,
+    Button,
+    GridspecLayout,
+    HBox,
+    IntSlider,
+    Label,
+    Layout,
+    Output,
+    Text,
+    VBox,
+)
 from lxml import html
 from pygments import formatters, highlight, lexers
 
 from ..domain.debugger import TimeTravelDebugger
 from ..domain.tracer import TimeTravelTracer
 from ..model.breakpoint import BPType
+import asyncio
+from time import time
 
 
 class GUI(object):
@@ -34,14 +50,30 @@ class GUI(object):
         self._current_state = None
         self._debugger = None
 
-        self._layout = GridspecLayout(4, 4)
+        self._layout = GridspecLayout(6, 4)
 
         self._lexer = lexers.get_lexer_by_name("Python")
         self._code_output = HTML()
 
         self._var_output = Output(layout=Layout(overflow_y="scroll"))
-        self._diff_slider = IntSlider(readout=False, layout=Layout(width="200px"))
+
+        self._diff_slider = IntSlider(min=1, readout=False, layout=Layout(width="100%"))
         self._diff_slider.observe(self.slider_command, names="value")
+        self._speed_slider = IntSlider(description="Playback Speed", min=1, max=5)
+        self._autoplay = Play()
+
+        self._reverse_autoplay = ToggleButton(
+            value=False, icon="history", tooltip="Reverse autoplay"
+        )
+
+        self._speed_slider.observe(self._handle_speed_slider)
+        self._reverse_autoplay.observe(self._handle_reverse_button)
+
+        self._auto_link = jsdlink(
+            (self._autoplay, "value"), (self._diff_slider, "value")
+        )
+
+        display(self._autoplay, self._speed_slider, self._reverse_autoplay)
 
         self._watchpoint_input = Text(layout=Layout(width="200px"))
         self._add_watchpoint = Button(description="Watch expression")
@@ -57,26 +89,29 @@ class GUI(object):
                 }
             </style>
             """
+
         display(HTML(style))
 
         for key, item in self._BUTTONS.items():
             self.register_button(key, item["symbol"])
 
-        buttons = VBox(
+        buttons = HBox(
             [
-                HBox(self.get_buttons("backstep", "step")),
-                HBox(self.get_buttons("previous", "next")),
-                HBox(self.get_buttons("start", "finish")),
-                HBox(self.get_buttons("continue", "reverse")),
-                self._diff_slider,
-                HBox([self._add_watchpoint, self._watchpoint_input]),
+                VBox(self.get_buttons("backstep", "step")),
+                VBox(self.get_buttons("previous", "next")),
+                VBox(self.get_buttons("start", "finish")),
+                VBox(self.get_buttons("continue", "reverse")),
+                VBox([self._add_watchpoint, self._watchpoint_input]),
             ]
         )
 
-        self._layout[:, 3:4] = buttons
-        self._layout[:, 0:3] = HBox(
+        self._layout[:2, 3] = buttons
+        self._layout[0:4, 0:3] = HBox(
             [self._code_output], layout=Layout(height="500px", overflow_y="scroll")
         )
+        self._layout[2:, 3] = self._var_output
+        self._layout[4, :] = self._diff_slider
+        self._layout[5, :] = buttons
 
         display(self._layout)
 
@@ -87,10 +122,7 @@ class GUI(object):
         diffs, source_map = self._tracer.get_trace()
         self._debugger = TimeTravelDebugger(diffs, source_map, self.update)
         self._debugger.start_debugger()
-        self._diff_slider.max = len(diffs)
-
-    def get_button(self, key):
-        return self._BUTTONS[key]["button"]
+        self._diff_slider.max = len(diffs) - 1
 
     def get_buttons(self, *keys):
         return [self._BUTTONS[key]["button"] for key in keys]
@@ -305,3 +337,12 @@ class GUI(object):
 
     def slider_command(self, change):
         self._debugger.step_to_index(change["new"])
+
+    def _handle_speed_slider(self, change):
+        if self._reverse_autoplay.value:
+            self._autoplay.step = change["new"]
+        else:
+            self._autoplay.step = -change["new"]
+
+    def _handle_reverse_button(self, change):
+        self._autoplay.step = -self._autoplay.step
