@@ -137,6 +137,8 @@ class StateMachine(object):
                 self._func_states.ret(new_diff.func_name)
             elif new_diff.action == Action.UPDATE:
                 self._func_states.update(new_diff.func_name, new_diff.changed.copy())
+            elif new_diff.action == Action.EXCEPTION:
+                pass
             else:
                 raise Exception(f"Invalid Action: '{new_diff.action}'")
             if self.next_action == Action.RET:
@@ -164,8 +166,10 @@ class StateMachine(object):
                 self._func_states.revert_update(
                     new_diff.func_name, prev_diff.added.copy(), prev_diff.updated.copy()
                 )
+            elif prev_diff.action == Action.EXCEPTION:
+                pass
             else:
-                raise Exception(f"Invalid Action: '{new_diff.action}'")
+                raise Exception(f"Invalid Action: '{prev_diff.action}'")
 
             if prev_diff.action == Action.RET:
                 # skip the implicit return statement and the line of callee
@@ -175,13 +179,12 @@ class StateMachine(object):
 
     @property
     def at_start(self):
-        #  return self._at_start
-        return self._exec_point < 2
+        return self._exec_point < 2 
 
     @property
     def at_end(self):
-        #  return self._at_end
-        return self._exec_point == len(self._exec_state_diffs) - 1
+        # if the current diff is the last, or if we reached an Exception
+        return self._exec_point == len(self._exec_state_diffs) - 1 or self.curr_diff.action == Action.EXCEPTION
 
     @property
     def curr_line(self):

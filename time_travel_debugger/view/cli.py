@@ -1,5 +1,7 @@
 import inspect
 import os
+import traceback
+from pprint import pprint
 
 # DO NOT REMOVE THIS
 import readline
@@ -10,6 +12,7 @@ from pygments import formatters, highlight, lexers, styles
 
 from ..domain.debugger import TimeTravelDebugger
 from ..domain.tracer import TimeTravelTracer
+from ..model.exec_state_diff import Action
 from .completer import CLICompleter
 
 # TODO: Signal handling on Ctrl-C, Ctrl-D
@@ -104,7 +107,7 @@ class TimeTravelCLI(object):
         self._current_state = state
 
         if self._draw_update:
-            os.system("clear")
+            #  os.system("clear")
             self.list_command()
 
             for wp in self._debugger.watchpoints:
@@ -116,6 +119,11 @@ class TimeTravelCLI(object):
 
             if self._debugger.at_end:
                 print("Hit end of program")
+
+            diff = self._debugger.curr_diff
+            if diff.action == Action.EXCEPTION:
+                print("Exception:")
+                pprint(diff._tb)
 
             if self._debugger.at_start:
                 print("Hit start of program")

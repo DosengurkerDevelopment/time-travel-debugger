@@ -16,7 +16,6 @@ def test1(a):
         b = id(a)
         a -= 1
         x -= 1
-    return
 
 
 def id(a):
@@ -86,6 +85,7 @@ def remove_html_markup(s):
         elif not tag:
             out = out + c
 
+    print(out)
     return out
 
 
@@ -106,7 +106,7 @@ def watch_test():
             a += 1
         else:
             b += 1
-    return a + b
+    d = a + b
 
 
 def nested_functions_test():
@@ -124,12 +124,20 @@ def nested_functions_test():
 
     f1()
 
+def throw_exception_test():
+    a=10
+    a=10
+    a=10
+    raise Exception("Uncaught")
+    b=10
+    return
+
 
 if __name__ == "__main__":
     with TimeTravelCLI():
         #  watch_test()
         #  id(12) # works
-        # test1(7)  # works
+        #  test1(7)  # works
         #  recursive_test(9) # works
         #  nested_functions_test()
         #  dict_test(123) #  works
@@ -137,5 +145,6 @@ if __name__ == "__main__":
         #  class_test(1, 2)  #  works
         # lambda_test(2)
         #  nested_classes_test(1,2) #  not working yet
-        # more_calls(1) #  works
-        remove_html_markup("<tag>hello</tag>")
+        #  more_calls(1) #  works
+        #  remove_html_markup("<tag>hello</tag>")
+        throw_exception_test()
