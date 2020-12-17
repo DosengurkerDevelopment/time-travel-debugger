@@ -1,24 +1,17 @@
-import inspect
-import os
-from pprint import pprint
-
-import colorama
-from IPython.core.display import Javascript, Markdown, clear_output, display
+from IPython.core.display import Markdown, clear_output, display
 from ipywidgets import (
-    jsdlink,
-    ToggleButton,
-    Play,
     HTML,
-    AppLayout,
     Button,
     GridspecLayout,
     HBox,
     IntSlider,
-    Label,
     Layout,
     Output,
+    Play,
     Text,
+    ToggleButton,
     VBox,
+    jsdlink,
 )
 from lxml import html
 from pygments import formatters, highlight, lexers
@@ -26,21 +19,19 @@ from pygments import formatters, highlight, lexers
 from ..domain.debugger import TimeTravelDebugger
 from ..domain.tracer import TimeTravelTracer
 from ..model.breakpoint import BPType
-import asyncio
-from time import time
 
 
 class GUI(object):
 
     _BUTTONS = {
-        "step": {"symbol": "\u2BC8", "button": None},
-        "next": {"symbol": "\u23ED", "button": None},
-        "backstep": {"symbol": "\u2BC7", "button": None},
-        "previous": {"symbol": "\u23EE", "button": None},
-        "finish": {"symbol": "Finish", "button": None},
-        "start": {"symbol": "Start", "button": None},
-        "continue": {"symbol": "Continue", "button": None},
-        "reverse": {"symbol": "Reverse", "button": None},
+        "step": {"description": "Step", "symbol": "step-forward"},
+        "next": {"description": "Next", "symbol": "fast-forward"},
+        "backstep": {"description": "Backstep", "symbol": "step-backward"},
+        "previous": {"description": "Previous", "symbol": "fast-backward"},
+        "finish": {"description": "Finish"},
+        "start": {"description": "Start"},
+        "continue": {"description": "Continue"},
+        "reverse": {"description": "Reverse"},
     }
 
     def __init__(self):
@@ -57,9 +48,13 @@ class GUI(object):
 
         self._var_output = Output(layout=Layout(overflow_y="scroll"))
 
-        self._diff_slider = IntSlider(min=1, readout=False, layout=Layout(width="100%"))
+        self._diff_slider = IntSlider(
+            min=1, readout=False, layout=Layout(width="100%")
+        )
         self._diff_slider.observe(self.slider_command, names="value")
-        self._speed_slider = IntSlider(description="Playback Speed", min=1, max=5)
+        self._speed_slider = IntSlider(
+            description="Playback Speed", min=1, max=5
+        )
         self._autoplay = Play()
 
         self._reverse_autoplay = ToggleButton(
@@ -79,7 +74,8 @@ class GUI(object):
         self._add_watchpoint = Button(description="Watch expression")
         self._add_watchpoint.on_click(self.watch_command)
 
-        # Need this to disable the default scrolling behaviour in the output widget
+        # Need this to disable the default scrolling behaviour in the output
+        # widget
         style = """
             <style>
                .jupyter-widgets-output-area .output_scroll {
@@ -93,7 +89,7 @@ class GUI(object):
         display(HTML(style))
 
         for key, item in self._BUTTONS.items():
-            self.register_button(key, item["symbol"])
+            self.register_button(key, **item)
 
         buttons = HBox(
             [
@@ -107,7 +103,8 @@ class GUI(object):
 
         self._layout[:2, 3] = buttons
         self._layout[0:4, 0:3] = HBox(
-            [self._code_output], layout=Layout(height="500px", overflow_y="scroll")
+            [self._code_output],
+            layout=Layout(height="500px", overflow_y="scroll"),
         )
         self._layout[2:, 3] = self._var_output
         self._layout[4, :] = self._diff_slider
@@ -127,8 +124,16 @@ class GUI(object):
     def get_buttons(self, *keys):
         return [self._BUTTONS[key]["button"] for key in keys]
 
-    def register_button(self, key, description):
-        button = Button(description=description)
+    def register_button(self, key, description=None, symbol=None):
+        if description is None and symbol is not None:
+            button = Button(symbol=symbol)
+        elif symbol is None and description is not None:
+            button = Button(description=description)
+        elif symbol is not None and description is not None:
+            button = Button(description=description, icon=symbol)
+        else:
+            button = Button()
+
         func = getattr(self, key + "_command")
         button.on_click(func)
         self._BUTTONS[key]["button"] = button
@@ -157,7 +162,7 @@ class GUI(object):
         and always flushing"""
         print(*objects, sep=sep, end=end, flush=True)
 
-    ### COMMANDS ###
+    # COMMANDS
     def print_command(self, arg=""):
         """Print all variables or pass an expression to evaluate in the
         current context"""
@@ -311,7 +316,9 @@ class GUI(object):
     def breakpoints_command(self, arg=""):
         """ List all breakpoints """
         table_template = "{:^15}|{:^6}|{:^20}|{:^15}|{:^20}"
-        header = table_template.format("id", "type", "location", "active", "condition")
+        header = table_template.format(
+            "id", "type", "location", "active", "condition"
+        )
 
         print(header)
         print("-" * len(header))
