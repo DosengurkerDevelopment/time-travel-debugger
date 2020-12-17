@@ -10,7 +10,7 @@ import sys
 import colorama
 from pygments import formatters, highlight, lexers, styles
 
-from ..domain.debugger import TimeTravelDebugger
+from ..domain.debugger import TimeTravelDebugger, Direction
 from ..domain.tracer import TimeTravelTracer
 from ..model.exec_state_diff import Action
 from .completer import CLICompleter
@@ -342,7 +342,6 @@ class TimeTravelCLI(object):
 
     def until_command(self, arg=""):
         """ Execute forward until a given point """
-        # Find out which type of breakpoint we want to insert
         args = self._parse_until_args(arg, self._debugger.source_map)
         if isinstance(args, dict):
             self._debugger.until(**args)
@@ -353,7 +352,7 @@ class TimeTravelCLI(object):
         """ Execute backward until a given point """
         args = self._parse_until_args(arg, self._debugger.source_map)
         if isinstance(args, dict):
-            self._debugger.backuntil(**args)
+            self._debugger.until(**args, direction=Direction.BACKWARD)
         elif isinstance(args, str):
             print(args)
 
