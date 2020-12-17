@@ -24,7 +24,6 @@ class TimeTravelCLI(object):
 
     NAV_COMMANDS = [
         "backstep",
-        "backuntil",
         "continue",
         "finish",
         "next",

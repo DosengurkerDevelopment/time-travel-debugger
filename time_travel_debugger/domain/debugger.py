@@ -470,29 +470,6 @@ class TimeTravelDebugger(object):
                     break
             move()
 
-    @trigger_update
-    def backuntil(self, line_no=0, file_name=""):
-        if line_no:
-            # line number given, so stop at lines larger than that
-            target = line_no
-        else:
-            # otherwise stop at lines bigger than next line
-            target = self.curr_line
-        # if we are at target line already, step one back to make sure, that
-        # we dont get stuck
-        if target == self.curr_line:
-            self._state_machine.backward()
-        while not self.at_start:
-            if self.curr_line < target:
-                # if filename was given, check if current filename matches
-                if file_name:
-                    if file_name == self.curr_diff.file_name:
-                        break
-                # otherwise dont check for filename
-                else:
-                    break
-            self._state_machine.backward()
-
     def get_callstack_safe_bounds(self, _min, _max):
         """ get callstack with safe min and max bounds """
         func_states = self._state_machine.curr_diff.get_function_states()
