@@ -246,6 +246,8 @@ class TimeTravelDebugger(object):
         self._update = update
 
     def trigger_update(func):
+        """ triggers a UI update by calling the corresponding method for the
+        currently used UI"""
         @wraps(func)
         def nfunc(self, *args, **kwargs):
             ret = func(self, *args, **kwargs)
