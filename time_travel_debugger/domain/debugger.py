@@ -229,7 +229,7 @@ class StateMachine(object):
     @property
     def curr_depth(self):
         func_states = self.curr_diff.get_function_states()
-        return len(func_states)-1
+        return len(func_states) - 1
 
 
 class TimeTravelDebugger(object):
@@ -310,6 +310,10 @@ class TimeTravelDebugger(object):
     def is_line_breakpoint(self, line, filename=None):
         filename = filename or self.curr_diff.file_name
         source = self.find_source_for_location(filename, line)
+
+        if source is None:
+            return False
+
         file = source["filename"]
         for bp in self.breakpoints:
             if bp.filename != file:
@@ -325,7 +329,7 @@ class TimeTravelDebugger(object):
         return self.curr_line == line
 
     def is_at_breakpoint(self, bp):
-        if self.curr_diff.file_name != bp.filename:
+        if self.curr_diff.file_name != bp.abs_filename:
             return False
         if bp.breakpoint_type == BPType.FUNC:
             if self._state_machine.direction == Direction.FORWARD:
@@ -487,20 +491,19 @@ class TimeTravelDebugger(object):
                     break
             self._state_machine.backward()
 
-    def get_callstack_safe_bounds(self,_min,_max):
+    def get_callstack_safe_bounds(self, _min, _max):
         """ get callstack with safe min and max bounds """
         func_states = self._state_machine.curr_diff.get_function_states()
         call_stack = []
         for state in func_states:
-            call_stack = call_stack + [( state.func_name )]
+            call_stack = call_stack + [(state.func_name)]
         lower_bound = max(0, _min)
         upper_bound = min(len(call_stack), _max)
         # print(f"lower:{lower_bound}, upper:{upper_bound}")
         if _min == _max:
-            return [ call_stack[_min] ]
+            return [call_stack[_min]]
         else:
             return call_stack[lower_bound:upper_bound]
-
 
     def where(self, bound=sys.maxsize):
         _min = self._call_stack_depth - bound
@@ -510,14 +513,14 @@ class TimeTravelDebugger(object):
     def up(self):
         func_states = self._state_machine.curr_diff.get_function_states()
         if self._call_stack_depth < len(func_states):
-            self._call_stack_depth +=1
+            self._call_stack_depth += 1
         _min = 0
         _max = self._call_stack_depth + 1
         return self.get_callstack_safe_bounds(_min, _max)
 
     def down(self):
         if self._call_stack_depth > 0:
-            self._call_stack_depth -=1
+            self._call_stack_depth -= 1
         _min = 0
         _max = self._call_stack_depth
         return self.get_callstack_safe_bounds(_min, _max)
@@ -558,8 +561,6 @@ class TimeTravelDebugger(object):
             # filename
             source = self.find_source_for_location(filename, lineno)
             lineno = self.find_next_executable_line(lineno, source)
-
-            print(lineno)
 
             breakpoint = Breakpoint(id, lineno, filename, cond)
 

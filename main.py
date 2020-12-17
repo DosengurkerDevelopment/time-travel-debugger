@@ -71,7 +71,6 @@ def remove_html_markup(s):
     tag = False
     quote = False
     out = ""
-
     module(1, 4)
 
     # Help
@@ -86,8 +85,6 @@ def remove_html_markup(s):
             quote = not quote
         elif not tag:
             out = out + c
-
-    print(out)
     return out
 
 
