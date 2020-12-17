@@ -1,6 +1,8 @@
 import inspect
 import sys
 import os
+import traceback 
+
 from copy import deepcopy
 from typing import List
 
@@ -15,16 +17,15 @@ class TimeTravelTracer(object):
         self._diffs: List[ExecStateDiff] = []
         self._source_map = {}
         self._last_vars = []
-        self._prev_action = None
         self._should_call = False
         self._root_func_name = ""
 
     def get_trace(self):
         sys.settrace(None)
-        self._diffs.insert(0, deepcopy(self._diffs[0]))
+        # insert empty state at the beginning to mark the start
+        self._diffs.insert(0,ExecStateDiff(self.root_func_name))
+        # remove implicit return statement
         self._diffs.pop()
-        #  last_state = self._current_diff.finish()
-        #  self._diffs.append(last_state)
         return self._diffs, self._source_map
 
     def set_trace(self):
@@ -37,13 +38,17 @@ class TimeTravelTracer(object):
             self.traceit(frame, event, arg)
         return self._traceit
 
+    def _exception(self,tb):
+        new_state = self._current_diff.exception(tb)
+        self._diffs.append(new_state)
+
+
     def _do_return(self, frame):
         # return statements also could update variables:
         self._do_update(frame)
         new_state = self._current_diff.ret()
         self._diffs.append(new_state)
         self._last_vars.pop()
-        self._prev_action = Action.RET
         #  print(f"RETURN")
 
     def _do_call(self, frame):
@@ -55,7 +60,6 @@ class TimeTravelTracer(object):
         self._diffs.append(new_state)
         locals = frame.f_locals.copy()
         self._last_vars.append(locals)
-        self._prev_action = Action.CALL
         #  print(f"CALL")
 
     def _do_update(self, frame):
@@ -70,7 +74,6 @@ class TimeTravelTracer(object):
         self._diffs.append(new_state)
         locals = frame.f_locals.copy()
         self._last_vars[-1] = locals
-        self._prev_action = Action.UPDATE
         #  print(f"UPDATE")
 
     @property
@@ -114,8 +117,6 @@ class TimeTravelTracer(object):
         #  print(f"locals:{frame.f_locals}")
         # in case we returned from functin last line, we want to skip the
         # line of caller
-        #  if self._prev_action == Action.RET:
-        #  self._prev_action = None
         if event == "call":
             # we dont want to directly do_call, since we want to skip the
             # function definition
@@ -132,6 +133,14 @@ class TimeTravelTracer(object):
             #  self._do_update(frame)
             self._do_return(frame)
             #  print(f"RETURN")
+        elif event == "exception" :
+            print("exception")
+            exception, value, tb = arg
+            #  print(arg)
+            tb = traceback.format_exception(exception, value, tb)
+            #  print(tb_formatted)
+            self._exception(tb)
+            #  return
 
         # print(f"vars:{self._diffs[-1]}")
         return self._traceit

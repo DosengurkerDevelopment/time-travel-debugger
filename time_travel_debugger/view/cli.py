@@ -1,5 +1,7 @@
 import inspect
 import os
+import traceback
+from pprint import pprint
 
 # DO NOT REMOVE THIS
 import readline
@@ -8,8 +10,9 @@ import sys
 import colorama
 from pygments import formatters, highlight, lexers, styles
 
-from ..domain.debugger import TimeTravelDebugger
+from ..domain.debugger import TimeTravelDebugger, Direction
 from ..domain.tracer import TimeTravelTracer
+from ..model.exec_state_diff import Action
 from .completer import CLICompleter
 
 # TODO: Signal handling on Ctrl-C, Ctrl-D
@@ -104,7 +107,7 @@ class TimeTravelCLI(object):
         self._current_state = state
 
         if self._draw_update:
-            # os.system("clear")
+            os.system("clear")
             self.list_command()
 
             for wp in self._debugger.watchpoints:
@@ -116,6 +119,11 @@ class TimeTravelCLI(object):
 
             if self._debugger.at_end:
                 print("Hit end of program")
+
+            diff = self._debugger.curr_diff
+            if diff.action == Action.EXCEPTION:
+                print("Exception:")
+                pprint(diff._tb)
 
             if self._debugger.at_start:
                 print("Hit start of program")
@@ -336,7 +344,6 @@ class TimeTravelCLI(object):
 
     def until_command(self, arg=""):
         """ Execute forward until a given point """
-        # Find out which type of breakpoint we want to insert
         args = self._parse_until_args(arg, self._debugger.source_map)
         if isinstance(args, dict):
             self._debugger.until(**args)
@@ -347,7 +354,7 @@ class TimeTravelCLI(object):
         """ Execute backward until a given point """
         args = self._parse_until_args(arg, self._debugger.source_map)
         if isinstance(args, dict):
-            self._debugger.backuntil(**args)
+            self._debugger.until(**args, direction=Direction.BACKWARD)
         elif isinstance(args, str):
             print(args)
 

@@ -13,6 +13,7 @@ class Action(Enum):
     CALL = 1
     RET = 2
     UPDATE = 3
+    EXCEPTION = 4
 
 
 class ExecStateDiff(object):
@@ -39,7 +40,11 @@ class ExecStateDiff(object):
         self._action = Action.RET
         return self
 
-    def finish(self):
+    def exception(self, tb):
+        self._action = Action.EXCEPTION
+        #  self._exception = exception
+        #  self._value = value
+        self._tb = tb
         return self
 
     def __contains__(self, key):

@@ -7,7 +7,6 @@ from ..model.breakpoint import Breakpoint, FunctionBreakpoint, BPType
 from ..model.exec_state_diff import ExecStateDiff, Action
 from copy import deepcopy
 
-
 class Direction(Enum):
 
     FORWARD = 1
@@ -137,6 +136,8 @@ class StateMachine(object):
                 self._func_states.ret(new_diff.func_name)
             elif new_diff.action == Action.UPDATE:
                 self._func_states.update(new_diff.func_name, new_diff.changed.copy())
+            elif new_diff.action == Action.EXCEPTION:
+                pass
             else:
                 raise Exception(f"Invalid Action: '{new_diff.action}'")
             if self.next_action == Action.RET:
@@ -164,8 +165,10 @@ class StateMachine(object):
                 self._func_states.revert_update(
                     new_diff.func_name, prev_diff.added.copy(), prev_diff.updated.copy()
                 )
+            elif prev_diff.action == Action.EXCEPTION:
+                pass
             else:
-                raise Exception(f"Invalid Action: '{new_diff.action}'")
+                raise Exception(f"Invalid Action: '{prev_diff.action}'")
 
             if prev_diff.action == Action.RET:
                 # skip the implicit return statement and the line of callee
@@ -175,13 +178,12 @@ class StateMachine(object):
 
     @property
     def at_start(self):
-        #  return self._at_start
-        return self._exec_point < 2
+        return self._exec_point < 2 
 
     @property
     def at_end(self):
-        #  return self._at_end
-        return self._exec_point == len(self._exec_state_diffs) - 1
+        # if the current diff is the last, or if we reached an Exception
+        return self._exec_point == len(self._exec_state_diffs) - 1 or self.curr_diff.action == Action.EXCEPTION
 
     @property
     def curr_line(self):
@@ -366,39 +368,11 @@ class TimeTravelDebugger(object):
 
     @trigger_update
     def next(self):
-        curr_diff = self.curr_diff
-        curr_line = self._state_machine.curr_line
-        # find next executable line. may be undefined if not found
-        target = self.find_next_executable_line(
-            curr_line + 1, funcname=curr_diff.func_name
-        )
-        # continue to next line stepping over execution
-        while not self._state_machine.curr_line == target and not self.at_end:
-            # when we did not find the next valid line that is executable and
-            # the current line was after return we stay there
-            if not target and self.curr_diff.action == Action.RET:
-                break
-            # otherwise continue until we found a target or we hit end
-            self._state_machine.forward()
+        self.until()
 
     @trigger_update
     def previous(self):
-        curr_diff = self.curr_diff
-        curr_line = self._state_machine.curr_line
-        # find next executable line. may be undefined if not found
-        target = self.find_prev_executable_line(
-            curr_line - 1, funcname=curr_diff.func_name
-        )
-        print(f"curr_line:{curr_line}")
-        print(f"target:{target}")
-        # continue to next line stepping over execution
-        while not self._state_machine.curr_line == target and not self.at_start:
-            # when we did not find the previous valid line that is executable and
-            # the current line was before call we stay there
-            if not target and self._state_machine.prev_action == Action.CALL:
-                break
-            # otherwise continue until we found a target or we hit end
-            self._state_machine.backward()
+        self.until(direction=Direction.BACKWARD)
 
     @trigger_update
     def finish(self):
@@ -446,19 +420,45 @@ class TimeTravelDebugger(object):
             self._state_machine.backward()
 
     @trigger_update
-    def until(self, line_no=0, file_name=""):
+    def until(self, line_no=0, file_name="", direction=Direction.FORWARD):
+        func_name = self.curr_diff.func_name
         if line_no:
-            # line number given, so stop at lines larger than that
             target = line_no
         else:
-            # otherwise stop at lines bigger than next line
-            target = self.curr_line
-        # if we are at target line already, step one further to make sure, that
-        # we dont get stuck
-        if target == self.curr_line:
+            if direction==Direction.FORWARD:
+                target = self.curr_line + 1
+            else:
+                target = self.curr_line - 1
+
+        # depending on the move dir define action and limits of the until
+        # command
+        if direction==Direction.FORWARD:
+            move = self._state_machine.forward
+            at_limit = lambda: self.at_end 
+            stepped_out_of_function = lambda: \
+                     self.curr_diff.action == Action.RET
+            # find next executable line for target
+            # if there is no executable line in the current function run till end
+            target = self.find_next_executable_line(target, funcname = func_name)
+            # make sure we dont stay at the same line
             self._state_machine.forward()
-        while not self.at_end:
-            if self.curr_line > target:
+        else:
+            move = self._state_machine.backward
+            at_limit = lambda: self.at_start
+            stepped_out_of_function = lambda: \
+                    self._state_machine.next_action == Action.CALL
+            # find prev executable line for target
+            # if there is no executable line in the current function run till end
+            target = self.find_prev_executable_line(target, funcname = func_name)
+            # make sure we dont stay at the same line
+            self._state_machine.backward()
+
+        while not at_limit():
+            # when stepping out of function act as next or previous (stay at
+            # point after return or before call)
+            if not target and stepped_out_of_function():
+                break
+            if self.curr_line == target:
                 # if filename was given, check if current filename matches
                 if file_name:
                     if file_name == self.curr_diff.file_name:
@@ -466,7 +466,7 @@ class TimeTravelDebugger(object):
                 # otherwise dont check for filename
                 else:
                     break
-            self._state_machine.forward()
+            move()
 
     @trigger_update
     def backuntil(self, line_no=0, file_name=""):
