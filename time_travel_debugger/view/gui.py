@@ -53,14 +53,16 @@ class GUI(object):
         )
         self._diff_slider.observe(self.slider_command, names="value")
 
-        self._speed_slider = IntSlider(
-            description="Playback Speed", min=1, max=5
-        )
-        self._speed_slider.observe(self._handle_speed_slider)
-
         self._autoplay = Play()
         self._auto_link = jsdlink(
             (self._autoplay, "value"), (self._diff_slider, "value")
+        )
+
+        self._speed_slider = IntSlider(
+            description="Delay (ms)", min=100, max=1000, step=100, value=500
+        )
+        self._speed_link = jsdlink(
+            (self._speed_slider, "value"), (self._autoplay, "interval")
         )
 
         self._reverse_autoplay = ToggleButton(
@@ -355,12 +357,6 @@ class GUI(object):
 
     def slider_command(self, change):
         self._debugger.step_to_index(change["new"])
-
-    def _handle_speed_slider(self, change):
-        if self._reverse_autoplay.value:
-            self._autoplay.step = change["new"]
-        else:
-            self._autoplay.step = -change["new"]
 
     def _handle_reverse_button(self, change):
         self._autoplay.step = -self._autoplay.step
