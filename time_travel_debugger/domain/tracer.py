@@ -99,7 +99,7 @@ class TimeTravelTracer(object):
 
         # collect the code in a source_map, so we can print it later in the
         # debugger
-        filename = os.path.basename(inspect.getsourcefile(frame.f_code))
+        filename = inspect.getsourcefile(frame.f_code)
         code, startline = inspect.getsourcelines(frame.f_code)
         self.root_func_name = frame.f_code.co_name
         #  if frame.f_code.co_name not in self._source_map:

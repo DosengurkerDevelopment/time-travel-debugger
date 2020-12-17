@@ -6,7 +6,7 @@ from enum import Enum
 from copy import deepcopy
 
 # named tuple for a variable change
-VarUpdate = collections.namedtuple('VarUpdate', 'before after')
+VarUpdate = collections.namedtuple("VarUpdate", "before after")
 
 
 class Action(Enum):
@@ -16,9 +16,9 @@ class Action(Enum):
 
 
 class ExecStateDiff(object):
-    ''' Model for saving differences between states of executions '''
+    """ Model for saving differences between states of executions """
 
-    def __init__(self,root_func_name):
+    def __init__(self, root_func_name):
         self._function_states = []
         self._action = None
         self._root_func_name = root_func_name
@@ -67,27 +67,28 @@ class ExecStateDiff(object):
 
     @property
     def func_name(self):
-        if (len(self._function_states) > 0):
+        if len(self._function_states) > 0:
             return self._function_states[-1].func_name
         else:
             return self._root_func_name
 
     @property
     def lineno(self):
-        if (len(self._function_states) > 0):
+        if len(self._function_states) > 0:
             return self._function_states[-1].lineno
         else:
             return -1
 
     @property
     def added(self):
-        if (len(self._function_states) > 0):
+        if len(self._function_states) > 0:
             return self._function_states[-1].added
         else:
             return {}
+
     @property
     def updated(self):
-        if (len(self._function_states) > 0):
+        if len(self._function_states) > 0:
             return self._function_states[-1].updated
         else:
             return {}
@@ -99,7 +100,7 @@ class ExecStateDiff(object):
 
     @property
     def file_name(self):
-        if (len(self._function_states) > 0):
+        if len(self._function_states) > 0:
             return self._function_states[-1].file_name
         else:
             return ""
@@ -107,19 +108,19 @@ class ExecStateDiff(object):
     # the number of nested function calls
     @property
     def depth(self):
-        if (len(self._function_states) > 0):
+        if len(self._function_states) > 0:
             return len(self._function_states) - 1
         else:
             return -1
 
 
 class FunctionStateDiff(object):
-    ''' Model for saving differences between states of executions for one function scope '''
+    """ Model for saving differences between states of executions for one function scope """
 
     def __init__(self, frame):
         # Hash of the frame this diff belongs to
         self._frame = hash(frame)
-        self._file_name = os.path.basename(inspect.getfile(frame))
+        self._file_name = inspect.getsourcefile(frame)
         self._func_name = frame.f_code.co_name
         # Line number of the diff
         self._lineno = frame.f_lineno

@@ -1,3 +1,5 @@
+import os
+
 from enum import Enum
 
 
@@ -30,6 +32,10 @@ class BaseBreakpoint(object):
 
     @property
     def filename(self):
+        return os.path.basename(self._filename)
+
+    @property
+    def abs_filename(self):
         return self._filename
 
     @property

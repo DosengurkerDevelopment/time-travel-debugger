@@ -70,7 +70,6 @@ def remove_html_markup(s):
     tag = False
     quote = False
     out = ""
-
     module(1, 4)
 
     # Help

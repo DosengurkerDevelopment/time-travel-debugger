@@ -1,21 +1,33 @@
+import inspect
+import os
+from pprint import pprint
+
 import colorama
-from IPython.core.display import clear_output, display, Markdown
+from IPython.core.display import Javascript, Markdown, clear_output, display
 from ipywidgets import (
+    HTML,
     AppLayout,
     Button,
+    GridspecLayout,
     HBox,
     IntSlider,
+    Label,
     Layout,
     Output,
-    VBox,
-    Label,
-    HTML,
     Text,
+    VBox,
 )
+from lxml import html
 from pygments import formatters, highlight, lexers
 
 from ..domain.debugger import TimeTravelDebugger
 from ..domain.tracer import TimeTravelTracer
+from ..model.breakpoint import BPType
+from .html_breakpoints_formatter import HtmlBreakpointsFormatter
+
+here = os.path.dirname(__file__)
+root = os.path.abspath(os.path.join(here, "../../"))
+css = os.path.join(root, "codestyle.css")
 
 
 class GUI(object):
@@ -38,9 +50,12 @@ class GUI(object):
         self._current_state = None
         self._debugger = None
 
+        self._layout = GridspecLayout(4, 4)
+
         self._lexer = lexers.get_lexer_by_name("Python")
-        self._code_output = Output(layout=Layout(width="700px"))
-        self._var_output = Output(layout=Layout(width="400px"))
+        self._code_output = HTML()
+
+        self._var_output = Output(layout=Layout(overflow_y="scroll"))
         self._diff_slider = IntSlider(readout=False, layout=Layout(width="200px"))
         self._diff_slider.observe(self.slider_command, names="value")
 
@@ -48,10 +63,21 @@ class GUI(object):
         self._add_watchpoint = Button(description="Watch expression")
         self._add_watchpoint.on_click(self.watch_command)
 
+        # Need this to disable the default scrolling behaviour in the output widget
+        style = """
+            <style>
+               .jupyter-widgets-output-area .output_scroll {
+                    border-radius: unset !important;
+                    -webkit-box-shadow: unset !important;
+                    box-shadow: unset !important;
+                }
+            </style>
+            """
+        display(HTML(style))
+
         for key, item in self._BUTTONS.items():
             self.register_button(key, item["symbol"])
 
-        self._code_pane = HBox([self._code_output, self._var_output])
         buttons = VBox(
             [
                 HBox(self.get_buttons("backstep", "step")),
@@ -63,12 +89,9 @@ class GUI(object):
             ]
         )
 
-        self._layout = AppLayout(
-            header=HTML(value="<h1>Time Travel Debugger by DosengurkerDevelopment"),
-            left_sidebar=None,
-            center=self._code_pane,
-            right_sidebar=buttons,
-            footer=None,
+        self._layout[:, 3:4] = buttons
+        self._layout[:, 0:3] = HBox(
+            [self._code_output], layout=Layout(height="500px", overflow_y="scroll")
         )
 
         display(self._layout)
@@ -107,14 +130,11 @@ class GUI(object):
         self._BUTTONS["finish"]["button"].disabled = self._debugger.at_end
         self._BUTTONS["step"]["button"].disabled = self._debugger.at_end
 
-        with self._code_output:
-            clear_output(wait=True)
-            self.list_command()
+        self.list_command()
 
         with self._var_output:
             clear_output(wait=True)
             self.print_command()
-            self.list_watch_command()
 
     def log(self, *objects, sep=" ", end="\n", flush=False):
         """Like print(), but always sending to file given at initialization,
@@ -122,28 +142,22 @@ class GUI(object):
         print(*objects, sep=sep, end=end, flush=True)
 
     ### COMMANDS ###
-
     def print_command(self, arg=""):
         """Print all variables or pass an expression to evaluate in the
         current context"""
         # Shorthand such that the following code is not as lengthy
         curr_vars = self._current_state
+        template = "|{}|{}|{!r}|"
+        header = "| Variable | Type | Value |"
+        split = "| --- | --- | --- |"
 
-        if not arg:
-            self.log(
-                "\n".join(
-                    [
-                        f"{var} = {repr(curr_vars[var])}"
-                        for var in curr_vars
-                        if not var.startswith("__")
-                    ]
-                )
-            )
-        else:
-            try:
-                self.log(f"{arg} = {repr(eval(arg, globals(), curr_vars))}")
-            except Exception as err:
-                self.log(f"{err.__class__.__name__}: {err}")
+        variable_table = header + "\n" + split + "\n"
+        variable_table += "\n".join(
+            template.format(var, type(curr_vars[var]), curr_vars[var])
+            for var in curr_vars
+        )
+
+        display(Markdown(variable_table))
 
     def step_command(self, arg=""):
         """ Step to the next instruction """
@@ -156,34 +170,58 @@ class GUI(object):
     def list_command(self, arg=""):
         """Show current function. If arg is given, show its source code."""
         display_current_line = self._debugger.curr_line
-        if arg:
-            try:
-                code = self._debugger._source_map[arg]
-                source_lines = code["code"]
-                line_number = code["start"]
-            except Exception as err:
-                self.log(f"{err.__class__.__name__}: {err}")
-                return
-            display_current_line = -1
-        else:
-            code = self._debugger._source_map[self._debugger.curr_diff.func_name]
-            source_lines = code["code"]
-            line_number = code["start"]
 
-        block = "".join(source_lines)
+        code = self._debugger.get_source_for_func()
 
-        coloured = highlight(
-            block, lexer=self._lexer, formatter=formatters.get_formatter_by_name("16m")
+        source_lines = open(code["filename"]).read()
+
+        css = """
+        <style>
+        code > span:hover {
+            background-color: lightgrey
+        };
+
+        .breakpoint {
+            background-color: red
+        };
+
+        .currentline {
+            background-color: green
+        }
+        </style>
+        """
+
+        lexer = lexers.get_lexer_by_name("python")
+        formatter = formatters.HtmlFormatter(
+            linenos=True,
+            anchorlinenos=True,
+            full=True,
+            linespans=True,
+            wrapcode=True,
         )
+        coloured = highlight(source_lines, lexer=lexer, formatter=formatter)
 
-        for line in coloured.strip().split("\n"):
-            spacer = " "
-            if line_number == display_current_line:
-                spacer = ">"
-            elif self._debugger.is_line_breakpoint(line_number):
-                spacer = "#"
-            print(f"{line_number:4}{spacer} {line}")
-            line_number += 1
+        doc = html.fromstring(coloured)
+
+        self._debugger.add_breakpoint(lineno=78)
+
+        for bp in self._debugger.breakpoints:
+            if bp.active and bp.breakpoint_type != BPType.FUNC:
+                elem = doc.get_element_by_id(f"True-{bp.lineno}", None)
+                if elem is not None:
+                    elem.set("class", "breakpoint")
+
+
+        elem = doc.get_element_by_id(f"True-{bp.lineno}", None)
+        if elem is not None:
+            elem.set("class", "currentline")
+
+        for elem in doc.cssselect("code > span"):
+            elem.set("onclick", "alert(\"hallooo\")")
+
+        coloured = html.tostring(doc).decode("utf-8")
+
+        self._code_output.value = css + coloured
 
     def next_command(self, arg=""):
         """ Step to the next source line """

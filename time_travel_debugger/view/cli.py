@@ -62,8 +62,8 @@ class TimeTravelCLI(object):
             return
         except EOFError:
             cmd = input("\rReally quit? [y/N] ")
-            if cmd.lower() == 'y':
-                return 'quit'
+            if cmd.lower() == "y":
+                return "quit"
             else:
                 return None
 
@@ -104,7 +104,7 @@ class TimeTravelCLI(object):
         self._current_state = state
 
         if self._draw_update:
-            os.system("clear")
+            # os.system("clear")
             self.list_command()
 
             for wp in self._debugger.watchpoints:
@@ -184,9 +184,9 @@ class TimeTravelCLI(object):
         current context"""
 
         def prettify_classes(obj):
-            if hasattr(obj, '__dict__'):
-                return vars(obj)  
-            else :
+            if hasattr(obj, "__dict__"):
+                return vars(obj)
+            else:
                 return repr(obj)
 
         # Shorthand such that the following code is not as lengthy
@@ -204,7 +204,9 @@ class TimeTravelCLI(object):
                 )
             else:
                 try:
-                    self.log(f"{arg} = {prettify_classes(eval(arg, globals(), curr_vars))}")
+                    self.log(
+                        f"{arg} = {prettify_classes(eval(arg, globals(), curr_vars))}"
+                    )
                 except Exception as err:
                     self.log(f"{err.__class__.__name__}: {err}")
 
@@ -370,12 +372,10 @@ class TimeTravelCLI(object):
         call_stack = self._debugger.up()
         print(call_stack)
 
-
     def down_command(self, arg=""):
         """ Move down the call stack """
         call_stack = self._debugger.down()
         print(call_stack)
-
 
     def watch_command(self, arg=""):
         """ Insert a watchpoint """
