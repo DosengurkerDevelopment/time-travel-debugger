@@ -4,30 +4,14 @@ from pprint import pprint
 
 import colorama
 from IPython.core.display import Javascript, Markdown, clear_output, display
-from ipywidgets import (
-    HTML,
-    AppLayout,
-    Button,
-    GridspecLayout,
-    HBox,
-    IntSlider,
-    Label,
-    Layout,
-    Output,
-    Text,
-    VBox,
-)
+from ipywidgets import (HTML, AppLayout, Button, GridspecLayout, HBox,
+                        IntSlider, Label, Layout, Output, Text, VBox)
 from lxml import html
 from pygments import formatters, highlight, lexers
 
 from ..domain.debugger import TimeTravelDebugger
 from ..domain.tracer import TimeTravelTracer
 from ..model.breakpoint import BPType
-from .html_breakpoints_formatter import HtmlBreakpointsFormatter
-
-here = os.path.dirname(__file__)
-root = os.path.abspath(os.path.join(here, "../../"))
-css = os.path.join(root, "codestyle.css")
 
 
 class GUI(object):
@@ -179,11 +163,11 @@ class GUI(object):
         <style>
         code > span:hover {
             background-color: lightgrey
-        };
+        }
 
         .breakpoint {
             background-color: red
-        };
+        }
 
         .currentline {
             background-color: green
@@ -211,13 +195,12 @@ class GUI(object):
                 if elem is not None:
                     elem.set("class", "breakpoint")
 
-
-        elem = doc.get_element_by_id(f"True-{bp.lineno}", None)
+        elem = doc.get_element_by_id(f"True-{display_current_line}", None)
         if elem is not None:
             elem.set("class", "currentline")
 
         for elem in doc.cssselect("code > span"):
-            elem.set("onclick", "alert(\"hallooo\")")
+            elem.set("onclick", 'alert("hallooo")')
 
         coloured = html.tostring(doc).decode("utf-8")
 
