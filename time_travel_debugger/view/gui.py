@@ -24,10 +24,10 @@ from ..model.breakpoint import BPType
 class GUI(object):
 
     _BUTTONS = {
-        "step": {"description": "Step", "symbol": "step-forward"},
-        "next": {"description": "Next", "symbol": "fast-forward"},
-        "backstep": {"description": "Backstep", "symbol": "step-backward"},
-        "previous": {"description": "Previous", "symbol": "fast-backward"},
+        "step": {"description": "", "icon": "step-forward"},
+        "next": {"description": "", "icon": "fast-forward"},
+        "backstep": {"description": "", "icon": "step-backward"},
+        "previous": {"description": "", "icon": "fast-backward"},
         "finish": {"description": "Finish"},
         "start": {"description": "Start"},
         "continue": {"description": "Continue"},
@@ -41,41 +41,38 @@ class GUI(object):
         self._current_state = None
         self._debugger = None
 
-        self._layout = GridspecLayout(6, 4)
+        self._layout = GridspecLayout(7, 4)
 
-        self._lexer = lexers.get_lexer_by_name("Python")
         self._code_output = HTML()
-
-        self._var_output = Output(layout=Layout(overflow_y="scroll"))
+        self._var_output = Output()
+        self._watchpoint_output = Output()
+        self._breakpoint_output = Output()
 
         self._diff_slider = IntSlider(
             min=1, readout=False, layout=Layout(width="100%")
         )
         self._diff_slider.observe(self.slider_command, names="value")
+
         self._speed_slider = IntSlider(
             description="Playback Speed", min=1, max=5
         )
-        self._autoplay = Play()
-
-        self._reverse_autoplay = ToggleButton(
-            value=False, icon="history", tooltip="Reverse autoplay"
-        )
-
         self._speed_slider.observe(self._handle_speed_slider)
-        self._reverse_autoplay.observe(self._handle_reverse_button)
 
+        self._autoplay = Play()
         self._auto_link = jsdlink(
             (self._autoplay, "value"), (self._diff_slider, "value")
         )
 
-        display(self._autoplay, self._speed_slider, self._reverse_autoplay)
+        self._reverse_autoplay = ToggleButton(
+            value=False, icon="history", tooltip="Reverse autoplay"
+        )
+        self._reverse_autoplay.observe(self._handle_reverse_button)
 
         self._watchpoint_input = Text(layout=Layout(width="200px"))
         self._add_watchpoint = Button(description="Watch expression")
         self._add_watchpoint.on_click(self.watch_command)
 
-        # Need this to disable the default scrolling behaviour in the output
-        # widget
+        # Remove shadows from scrolling
         style = """
             <style>
                .jupyter-widgets-output-area .output_scroll {
@@ -85,13 +82,12 @@ class GUI(object):
                 }
             </style>
             """
-
         display(HTML(style))
 
         for key, item in self._BUTTONS.items():
             self.register_button(key, **item)
 
-        buttons = HBox(
+        self._buttons = HBox(
             [
                 VBox(self.get_buttons("backstep", "step")),
                 VBox(self.get_buttons("previous", "next")),
@@ -101,14 +97,21 @@ class GUI(object):
             ]
         )
 
-        self._layout[:2, 3] = buttons
         self._layout[0:4, 0:3] = HBox(
             [self._code_output],
             layout=Layout(height="500px", overflow_y="scroll"),
         )
-        self._layout[2:, 3] = self._var_output
+        self._layout[0:2, 3] = self._var_output
         self._layout[4, :] = self._diff_slider
-        self._layout[5, :] = buttons
+        self._layout[2:4, 3] = self._watchpoint_output
+        self._layout[5:7, :] = self._buttons
+
+        # self._layout[5, 0] = self._buttons
+        # self._layout[6, 0] = self._breakpoint_output
+
+        display(
+            HBox([self._autoplay, self._speed_slider, self._reverse_autoplay])
+        )
 
         display(self._layout)
 
@@ -119,18 +122,20 @@ class GUI(object):
         diffs, source_map = self._tracer.get_trace()
         self._debugger = TimeTravelDebugger(diffs, source_map, self.update)
         self._debugger.start_debugger()
+        self._debugger.add_breakpoint(lineno=78)
+        self._debugger.add_watchpoint(expression="c + out")
         self._diff_slider.max = len(diffs) - 1
 
     def get_buttons(self, *keys):
         return [self._BUTTONS[key]["button"] for key in keys]
 
-    def register_button(self, key, description=None, symbol=None):
-        if description is None and symbol is not None:
-            button = Button(symbol=symbol)
-        elif symbol is None and description is not None:
+    def register_button(self, key, description=None, icon=None, **kwargs):
+        if description is None and icon is not None:
+            button = Button(icon=icon)
+        elif icon is None and description is not None:
             button = Button(description=description)
-        elif symbol is not None and description is not None:
-            button = Button(description=description, icon=symbol)
+        elif icon is not None and description is not None:
+            button = Button(description=description, icon=icon)
         else:
             button = Button()
 
@@ -138,8 +143,9 @@ class GUI(object):
         button.on_click(func)
         self._BUTTONS[key]["button"] = button
 
-    def update(self, state):
-        self._current_state = state
+    def update(self, state=None):
+        if state is not None:
+            self._current_state = state
 
         self._diff_slider.value = self._debugger._state_machine._exec_point
 
@@ -156,6 +162,14 @@ class GUI(object):
         with self._var_output:
             clear_output(wait=True)
             self.print_command()
+
+        with self._breakpoint_output:
+            clear_output(wait=True)
+            self.breakpoints_command()
+
+        with self._watchpoint_output:
+            clear_output(wait=True)
+            self.list_watch_command()
 
     def log(self, *objects, sep=" ", end="\n", flush=False):
         """Like print(), but always sending to file given at initialization,
@@ -176,6 +190,7 @@ class GUI(object):
         variable_table += "\n".join(
             template.format(var, type(curr_vars[var]), curr_vars[var])
             for var in curr_vars
+            if not var.startswith("__")
         )
 
         display(Markdown(variable_table))
@@ -224,8 +239,6 @@ class GUI(object):
 
         doc = html.fromstring(coloured)
 
-        self._debugger.add_breakpoint(lineno=78)
-
         for bp in self._debugger.breakpoints:
             if bp.active and bp.breakpoint_type != BPType.FUNC:
                 elem = doc.get_element_by_id(f"True-{bp.lineno}", None)
@@ -270,20 +283,18 @@ class GUI(object):
     def watch_command(self, change):
         """ Insert a watchpoint """
         arg = self._watchpoint_input.value
-        res = self._debugger.add_watchpoint(arg)
-        if not res:
-            print("Could not add watchpoint.")
-        else:
-            print(f"Added watchpoint with id {res.id}.")
+        self._debugger.add_watchpoint(expression=arg)
+        self.update()
 
     def list_watch_command(self):
-        table_template = "{:^6}|{:^20}|{:^20}"
-        header = table_template.format("id", "watched expression", "value")
+        header = "| ID | Expression | Value |\n"
+        split = "|---|---|---|\n"
+        wpstr = header + split
 
-        print(header)
-        print("-" * len(header))
         for wp in self._debugger.watchpoints:
-            print(table_template.format(*wp))
+            wpstr += "|" + "|".join(wp) + "|\n"
+
+        display(Markdown(wpstr))
 
     def unwatch_command(self, arg=""):
         """ Remove a watchpoint """
@@ -315,15 +326,15 @@ class GUI(object):
 
     def breakpoints_command(self, arg=""):
         """ List all breakpoints """
-        table_template = "{:^15}|{:^6}|{:^20}|{:^15}|{:^20}"
-        header = table_template.format(
-            "id", "type", "location", "active", "condition"
-        )
+        header = "| ID | Type | Location | Status | Condition |\n"
+        split = "|---|---|---|---|---|\n"
 
-        print(header)
-        print("-" * len(header))
+        bpstr = header + split
+
         for bp in self._debugger.breakpoints:
-            print(table_template.format(*bp))
+            bpstr += "|" + "|".join(bp) + "|\n"
+
+        display(Markdown(bpstr))
 
     def delete_command(self, arg=""):
         """ Remove the given breakpoint """

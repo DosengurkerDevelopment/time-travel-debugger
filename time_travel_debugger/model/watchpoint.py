@@ -39,7 +39,9 @@ class Watchpoint(object):
         return self._expression
 
     def __iter__(self):
-        return iter((self._id, self._expression, self._last_value))
+        return iter(
+            (str(self._id), self._expression, repr(self._current_value))
+        )
 
     def __str__(self):
         return f"{repr(self.expression)}: {repr(self._last_value)} -> {repr(self._current_value)}"

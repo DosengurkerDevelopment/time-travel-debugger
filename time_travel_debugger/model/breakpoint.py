@@ -55,15 +55,17 @@ class Breakpoint(BaseBreakpoint):
     """ Container class that holds one breakpoint and all its properties """
 
     def __init__(self, id, lineno, filename, condition=""):
-        super().__init__(id, filename, BPType.COND if condition else BPType.LINE)
+        super().__init__(
+            id, filename, BPType.COND if condition else BPType.LINE
+        )
         self._lineno = lineno
         self._condition = condition
 
     def __iter__(self):
         return iter(
             (
-                self.id,
-                self.breakpoint_type,
+                str(self.id),
+                self.breakpoint_type.value,
                 self.abs_location,
                 self.status,
                 self.condition,
@@ -110,7 +112,15 @@ class FunctionBreakpoint(BaseBreakpoint):
         self._startline = startline
 
     def __iter__(self):
-        return iter((self.id, self.breakpoint_type, self.abs_location, self.status, ""))
+        return iter(
+            (
+                str(self.id),
+                self.breakpoint_type.value,
+                self.abs_location,
+                self.status,
+                "",
+            )
+        )
 
     @property
     def funcname(self):
