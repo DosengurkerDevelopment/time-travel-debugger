@@ -104,7 +104,7 @@ class TimeTravelCLI(object):
         self._current_state = state
 
         if self._draw_update:
-            # os.system("clear")
+            os.system("clear")
             self.list_command()
 
             for wp in self._debugger.watchpoints:
