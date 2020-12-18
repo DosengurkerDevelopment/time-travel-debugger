@@ -518,7 +518,6 @@ class TimeTravelDebugger(object):
         _max = self._call_stack_depth + bound
         return self.get_callstack_safe_bounds(_min, _max)
 
-    @trigger_update
     def up(self):
         # restore the target line from the call_stack queue.
         try:
@@ -528,8 +527,6 @@ class TimeTravelDebugger(object):
             pass
         return self.get_callstack_safe_bounds(0, self._call_stack_depth)
 
-
-    @trigger_update
     def down(self):
         if not self._state_machine.curr_depth == 0:
             # store the current line, for later, when we want to move up again.

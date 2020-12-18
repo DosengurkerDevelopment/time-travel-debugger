@@ -152,6 +152,12 @@ class GUI(object):
             placeholder="Enter line to break at", name="line_input"
         )
 
+        self._search_input = Text(placeholder="Search...")
+        self._search_input.observe(self._handle_search_input, names="value")
+
+        self._search_results = Output()
+        display(self._search_input, self._search_results)
+
         # Remove shadows from scrolling
         style = """
             <style>
@@ -273,7 +279,7 @@ class GUI(object):
         current context"""
         # Shorthand such that the following code is not as lengthy
         curr_vars = self._current_state
-        template = "|{}|{}|{!r}|"
+        template = "|`{}`|{}|`{!r}`|"
         header = "| Variable | Type | Value |"
         split = "| --- | --- | --- |"
 
@@ -379,10 +385,11 @@ class GUI(object):
     def list_watch_command(self):
         header = "| ID | Expression | Value |\n"
         split = "|---|---|---|\n"
+        template = "|{}|`{}`|`{!r}`|"
         wpstr = header + split
 
         for wp in self._debugger.watchpoints:
-            wpstr += "|" + "|".join(wp) + "|\n"
+            wpstr += template.format(*wp)
 
         display(Markdown(wpstr))
 
@@ -482,3 +489,9 @@ class GUI(object):
         self._function_dropdown.disabled = change["new"] != "Function"
         self._condition_input.disabled = change["new"] != "Conditional"
         self._line_input.disabled = change["new"] == "Function"
+
+    def _handle_search_input(self, change):
+        # results = self._debugger.search(change["new"])
+        with self._search_results:
+            clear_output()
+            print(change["new"])

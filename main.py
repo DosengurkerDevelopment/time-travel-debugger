@@ -69,7 +69,6 @@ def test2():
     a = 5
     b = 6
     id(a)
-    g = "penis"
     module(a, b)
     c = 7
 
