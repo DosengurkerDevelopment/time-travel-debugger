@@ -202,10 +202,6 @@ class GUI(object):
             ]
         )
 
-        self._search_query_type_dropdown = Dropdown(
-            options=["var_change", "func_call", "break_hit"],
-            description="Search query type",
-        )
         self._search_input = Text(placeholder="Search...")
         self._search_input.observe(self._handle_search_input, names="value")
 
@@ -214,7 +210,6 @@ class GUI(object):
             [
                 self._search_input,
                 self._search_results,
-                self._search_query_type_dropdown,
             ]
         )
 
@@ -583,10 +578,10 @@ class GUI(object):
     def _handle_search_input(self, change):
         try:
             input = change["new"]
-            event_type, query = input.split(":",1)
+            event_type, query = input.split(" ", 1)
             events = self._debugger.search(event_type, query)
         except:
-            pass
+            return
 
         with self._search_results:
             clear_output()
