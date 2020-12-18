@@ -376,13 +376,17 @@ class TimeTravelDebugger(object):
         self._state_machine.backward()
 
     @trigger_update
-    def step_to_index(self, index):
-        if index < self._state_machine._exec_point:
-            while index < self._state_machine._exec_point:
-                self._state_machine.backward()
-        if index > self._state_machine._exec_point:
-            while index > self._state_machine._exec_point:
-                self._state_machine.forward()
+    def step_to_index(self, index, ignore_breakpoints=False):
+        def break_():
+            return self.break_at_current() and not ignore_breakpoints
+
+        while index < self._state_machine._exec_point and not break_():
+            self._state_machine.backward()
+
+        while index > self._state_machine._exec_point and not break_():
+            self._state_machine.forward()
+
+        return self.break_at_current()
 
     @trigger_update
     def next(self):

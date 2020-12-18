@@ -1,6 +1,6 @@
 import os
 
-from IPython.core.display import Markdown, clear_output, display
+from IPython.core.display import Markdown, clear_output, display, Javascript
 from ipywidgets import (
     ToggleButtons,
     Valid,
@@ -28,6 +28,7 @@ from ..model.breakpoint import BPType
 here = os.path.dirname(__file__)
 root = os.path.abspath(os.path.join(here, "../../"))
 cssfile = open(os.path.join(root, "codestyle.css")).read()
+javascript = open(os.path.join(root, "scrollIntoView.js")).read()
 
 
 class GUI(object):
@@ -126,9 +127,17 @@ class GUI(object):
         self._add_breakpoint = Button(
             icon="plus",
             description="Add breakpoint",
-            tooltip="Add a function breakpoint",
+            tooltip="Add a breakpoint",
+            name="breakpoint_button",
         )
         self._add_breakpoint.on_click(self._handle_breakpoint)
+
+        self._disable_breakpoint_button = Button(
+            icon="eye-slash", tooltip="Disable breakpoint"
+        )
+
+        self._breakpoint_dropdown = Dropdown()
+
         self._function_dropdown = Dropdown()
         self._function_dropdown.disabled = True
         self._breakpoint_type = ToggleButtons(
@@ -139,18 +148,8 @@ class GUI(object):
         )
         self._condition_input = Text(placeholder="Enter condition")
         self._condition_input.disabled = True
-        self._line_input = Text(placeholder="Enter line to break at")
-
-        display(
-            HBox(
-                [
-                    self._add_breakpoint,
-                    self._breakpoint_type,
-                    self._function_dropdown,
-                    self._line_input,
-                    self._condition_input,
-                ]
-            )
+        self._line_input = Text(
+            placeholder="Enter line to break at", name="line_input"
         )
 
         # Remove shadows from scrolling
@@ -177,24 +176,30 @@ class GUI(object):
             ]
         )
 
-        self._layout[1:5, 0:3] = HBox(
+        self._layout[0:4, 0:3] = HBox(
             [self._code_output],
             layout=Layout(
                 height="500px", overflow_y="scroll", border="2px solid black"
             ),
         )
-        self._layout[1:3, 3] = self._var_output
-        self._layout[5, :] = self._diff_slider
-        self._layout[3:5, 3] = self._watchpoint_output
-        self._layout[0:1, :3] = self._buttons
-        self._layout[0:1, 3] = VBox(
+        self._layout[0:2, 3] = self._var_output
+        self._layout[6, :] = self._diff_slider
+        self._layout[2:4, 3] = self._watchpoint_output
+        self._layout[5, :3] = self._buttons
+        self._layout[4, :3] = HBox(
+            [self._autoplay, self._speed_slider, self._reverse_autoplay]
+        )
+        self._layout[4:5, 3] = VBox(
             [self._watchpoint_input, self._add_watchpoint]
         )
-
-        # self._layout[6, 0] = self._breakpoint_output
-
-        display(
-            HBox([self._autoplay, self._speed_slider, self._reverse_autoplay])
+        self._layout[6, :] = HBox(
+            [
+                self._add_breakpoint,
+                self._breakpoint_type,
+                self._function_dropdown,
+                self._line_input,
+                self._condition_input,
+            ]
         )
 
         display(self._layout)
@@ -206,7 +211,6 @@ class GUI(object):
         diffs, source_map = self._tracer.get_trace()
         self._debugger = TimeTravelDebugger(diffs, source_map, self.update)
         self._debugger.start_debugger()
-        self._debugger.add_watchpoint(expression="c + out")
         self._diff_slider.max = len(diffs) - 1
         self._function_dropdown.options = self._debugger.source_map.keys()
 
@@ -228,10 +232,13 @@ class GUI(object):
         self._BUTTONS["previous"]["button"].disabled = self._debugger.at_start
         self._BUTTONS["start"]["button"].disabled = self._debugger.at_start
         self._BUTTONS["backstep"]["button"].disabled = self._debugger.at_start
-
         self._BUTTONS["next"]["button"].disabled = self._debugger.at_end
         self._BUTTONS["finish"]["button"].disabled = self._debugger.at_end
         self._BUTTONS["step"]["button"].disabled = self._debugger.at_end
+
+        self._breakpoint_dropdown.options = [
+            b.id for b in self._debugger.breakpoints
+        ]
 
         self.list_command()
 
@@ -246,6 +253,14 @@ class GUI(object):
         with self._watchpoint_output:
             clear_output(wait=True)
             self.list_watch_command()
+
+        display(
+            Javascript(
+                javascript
+                + f'\nscrollToView("True-{self._debugger.curr_line - 10}")'
+                + f'\nscrollToView("True-{self._debugger.curr_line + 10}")'
+            )
+        )
 
     def log(self, *objects, sep=" ", end="\n", flush=False):
         """Like print(), but always sending to file given at initialization,
@@ -313,7 +328,6 @@ class GUI(object):
                 continue
             if bp.breakpoint_type != BPType.FUNC:
                 elem = doc.get_element_by_id(f"True-{bp.lineno}", None)
-                print(bp.lineno)
                 if bp.lineno == display_current_line:
                     current_line_breakpoint = True
                 if elem is not None:
@@ -327,10 +341,6 @@ class GUI(object):
                 elem.set("class", "currentline")
             else:
                 elem.set("class", "hit")
-
-        # for elem in doc.cssselect("code > span"):
-        #     ln = elem.attrib["id"].split("-")[1]
-        #     elem.set("onclick", f"alert({ln})")
 
         coloured = html.tostring(doc).decode("utf-8").strip()
 
@@ -428,13 +438,12 @@ class GUI(object):
         """ Enable the given breakpoint """
         self._debugger.enable_breakpoint(int(arg))
 
-    def cond_command(self, arg=""):
-        """ Set a conditional breakpoint at the given location """
-        location, condition = arg.split(" ", 1)
-        self._debugger.add_breakpoint(location, "cond", cond=condition)
-
     def _handle_diff_slider(self, change):
-        self._debugger.step_to_index(change["new"])
+        braked = self._debugger.step_to_index(
+            change["new"], ignore_breakpoints=self._autoplay._playing
+        )
+        if braked:
+            self._autoplay._playing = False
 
     def _handle_reverse_button(self, change):
         self._autoplay.step = -self._autoplay.step
@@ -466,8 +475,6 @@ class GUI(object):
             self._debugger.add_breakpoint(lineno=line)
         if type == "Conditional":
             self._debugger.add_breakpoint(lineno=line, cond=condition)
-
-        print(self._debugger.breakpoints)
 
         self.update()
 
