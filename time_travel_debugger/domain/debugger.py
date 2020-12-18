@@ -252,6 +252,8 @@ class TimeTravelDebugger(object):
         self._breakpoints = []
         self._watchpoints = []
         self._call_stack_depth = 0
+        # que of lines in callstack, after moving down the callstack
+        self._call_stack_return_lines = []
 
         self._update = update
 
@@ -453,25 +455,27 @@ class TimeTravelDebugger(object):
         if direction == Direction.FORWARD:
             move = self._state_machine.forward
             at_limit = lambda: self.at_end
-            stepped_out_of_function = (
-                lambda: self.curr_diff.action == Action.RET
-            )
+            stepped_out_of_function =\
+                    lambda: self.curr_diff.action == Action.RET
+
             # find next executable line for target
             # if there is no executable line in the current function run till end
-            target = self.find_next_executable_line(target, funcname=func_name)
+            target = self.find_next_executable_line(target)
             # make sure we dont stay at the same line
             self._state_machine.forward()
         else:
             move = self._state_machine.backward
             at_limit = lambda: self.at_start
-            stepped_out_of_function = (
-                lambda: self._state_machine.next_action == Action.CALL
-            )
+            stepped_out_of_function =\
+                    lambda: self._state_machine.next_action == Action.CALL
+
             # find prev executable line for target
             # if there is no executable line in the current function run till end
-            target = self.find_prev_executable_line(target, funcname=func_name)
+            target = self.find_prev_executable_line(target)
             # make sure we dont stay at the same line
             self._state_machine.backward()
+
+        #  print(f"target: {target}")
 
         while not at_limit():
             # when stepping out of function act as next or previous (stay at
@@ -507,20 +511,26 @@ class TimeTravelDebugger(object):
         _max = self._call_stack_depth + bound
         return self.get_callstack_safe_bounds(_min, _max)
 
+    @trigger_update
     def up(self):
-        func_states = self._state_machine.curr_diff.get_function_states()
-        if self._call_stack_depth < len(func_states):
-            self._call_stack_depth += 1
-        _min = 0
-        _max = self._call_stack_depth + 1
-        return self.get_callstack_safe_bounds(_min, _max)
+        # restore the target line from the call_stack queue.
+        try:
+            target = self._call_stack_return_lines.pop()
+            self.until(line_no=target)
+        except:
+            pass
+        return self.get_callstack_safe_bounds(0, self._call_stack_depth)
 
+
+    @trigger_update
     def down(self):
-        if self._call_stack_depth > 0:
-            self._call_stack_depth -= 1
-        _min = 0
-        _max = self._call_stack_depth
-        return self.get_callstack_safe_bounds(_min, _max)
+        if not self._state_machine.curr_depth == 0:
+            # store the current line, for later, when we want to move up again.
+            self._call_stack_return_lines.append(self.curr_line)
+            # move backwards out of the function (-1 will be invalid target and thus
+            # just run backwards till call)
+            self.until(line_no= -1, direction = Direction.BACKWARD)
+        return self.get_callstack_safe_bounds(0, self._call_stack_depth)
 
     def get_breakpoint(self, id):
         for b in self.breakpoints:
@@ -569,6 +579,16 @@ class TimeTravelDebugger(object):
         source = self._source_map[funcname or self.curr_diff.func_name]
         return source
 
+    def get_func_name_for_line(self, line_no):
+        for name, src in self.source_map.items():
+            start_line = src["start"]
+            last_line = start_line + len(src["code"]) -1
+            code_lines = list(range(start_line, last_line))
+            if line_no in code_lines:
+                return name
+        # no such line in the sourcemap, so return None
+        return None
+
     def find_source_for_location(self, filename, line_number):
         for func_name, source in self._source_map.items():
             if source["filename"] == filename:
@@ -600,6 +620,13 @@ class TimeTravelDebugger(object):
     def find_next_executable_line(
         self, line_number, source=None, filename=None, funcname=None
     ):
+        # find funcname, if not given:
+        if not funcname:
+            funcname = self.get_func_name_for_line(line_number)
+            #  print(funcname)
+        # if not found return None
+        if not funcname:
+            return None
         if source:
             starting_line, source_code = source["start"], source["code"]
         else:
@@ -623,6 +650,12 @@ class TimeTravelDebugger(object):
     def find_prev_executable_line(
         self, line_number, source=None, filename=None, funcname=None
     ):
+        # find funcname, if not given:
+        if not funcname:
+            funcname = self.get_func_name_for_line(line_number)
+        # if not found return None
+        if not funcname:
+            return None
         if source:
             starting_line, source_code = source["start"], source["code"]
         else:
