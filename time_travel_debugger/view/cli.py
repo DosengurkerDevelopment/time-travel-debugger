@@ -460,7 +460,7 @@ class TimeTravelCLI(object):
 
     def breakpoints_command(self, arg=""):
         """ List all breakpoints """
-        table_template = "{:^15}|{:^6}|{:^20}|{:^15}|{:^20}"
+        table_template = "{:^15}|{:^6}|{:^25}|{:^15}|{:^20}"
         header = table_template.format(
             "id", "type", "location", "active", "condition"
         )

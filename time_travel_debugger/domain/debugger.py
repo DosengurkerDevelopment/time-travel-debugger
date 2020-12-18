@@ -331,12 +331,12 @@ class TimeTravelDebugger(object):
 
         file = source["filename"]
         for bp in self.breakpoints:
-            if bp.filename != file:
+            if bp.abs_filename != file:
                 continue
             if bp.breakpoint_type == BPType.FUNC:
                 continue
             else:
-                if bp.lineno == line:
+                if bp.lineno == line and bp.active:
                     return True
         return False
 
