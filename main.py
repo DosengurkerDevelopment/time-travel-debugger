@@ -141,7 +141,7 @@ def throw_exception_test():
 if __name__ == "__main__":
     with TimeTravelCLI():
         # test1(10)
-        test2()
+        #  test2()
         #  watch_test()
         #  id(12) # works
         # test1(7)  # works
@@ -153,5 +153,5 @@ if __name__ == "__main__":
         # lambda_test(2)
         #  nested_classes_test(1,2) #  not working yet
         #  more_calls(1) #  works
-        # remove_html_markup("<tag>hello</tag>")
+        remove_html_markup("<tag>hello</tag>")
         #  throw_exception_test()

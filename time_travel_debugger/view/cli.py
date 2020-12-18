@@ -404,14 +404,9 @@ class TimeTravelCLI(object):
             try:
                 event_type, query = arg.split(" ",1)
                 try:
-                    event_type = EventType(event_type)
-                except Exception as err:
-                    print("No such event type! Available event types are:")
-                    pprint([t.value for t in EventType])
-                    return 
-
-                try:
                     results = self._debugger.search(event_type,query)
+                    if results == None:
+                        print("Wrong search criteria")
                     pprint(results)
                 except Exception as err:
                     print(err)

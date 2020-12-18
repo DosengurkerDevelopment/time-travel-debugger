@@ -5,6 +5,7 @@ from functools import wraps
 from ..model.watchpoint import Watchpoint
 from ..model.breakpoint import Breakpoint, FunctionBreakpoint, BPType
 from ..model.exec_state_diff import ExecStateDiff, Action
+from ..model.event import EventType, Event
 from copy import deepcopy
 
 
@@ -467,6 +468,7 @@ class TimeTravelDebugger(object):
             self._state_machine.backward()
 
     def search(self, event_type, query):
+        event_type = EventType(event_type)
         if self._last_search_exec_point != self._state_machine._exec_point:
             self._last_search_exec_point = self._state_machine._exec_point
             self._search_engine.init(\
