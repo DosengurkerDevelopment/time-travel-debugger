@@ -50,22 +50,25 @@ class SearchEngine(TimeTravelDebugger):
         func_names = []
         line_nums = []
         
+        query = query.replace('"','')
+        query = query.replace("'",'')
         phrases = query.split(',')
         for phrase in phrases:
             if phrase.startswith('#'):
                 id = phrase.replace('#','')
                 ids.append(id)
             elif phrase.startswith("line "):
-                line_nums.append(int(phrase.replace("line ",'')))
+                line_nums.append(phrase.replace("line ",''))
             else:
                 func_names.append(phrase)
-        #  print ( ids, func_names, line_nums )
+        print ( ids, func_names, line_nums )
         return ids, func_names, line_nums
 
     def search_events(self, event_type:EventType, query):
         """ search for events of a specific type in the programm execution """
         ids, func_names, line_nums = self._parse_search_query(query)
         results = []
+        search_list = []
         if event_type == EventType.VAR_CHANGE:
             search_list = self._var_change_events
         elif event_type == EventType.BREAK_HIT:
@@ -113,7 +116,7 @@ class SearchEngine(TimeTravelDebugger):
             self._state_machine.forward()
         #  print(f"var_change_events: {self._var_change_events}")
         #  print(f"func_call_events: {self._func_call_events}")
-        #  print(f"break_hit_event: {self._break_hit_events}")
+        print(f"break_hit_event: {self._break_hit_events}")
 
 
     def _check_breakpoint_hit(self):

@@ -402,7 +402,7 @@ class TimeTravelCLI(object):
         """ {event_type query} - Search for specific events, like variable changes and breakpoint hits """
         if arg:
             try:
-                event_type, query = arg.split(" ")
+                event_type, query = arg.split(" ",1)
                 try:
                     event_type = EventType(event_type)
                 except Exception as err:
