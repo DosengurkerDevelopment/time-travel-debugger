@@ -43,7 +43,7 @@ class SearchEngine(TimeTravelDebugger):
             elif phrase.startswith("func"):
                 func_name = phrase.split("func")[-1]
                 func_names.append(func_name.strip())
-            else:
+            elif phrase:
                 id = phrase
                 ids.append(id)
 
