@@ -27,8 +27,11 @@ class TimeTravelCLI(object):
         "previous",
         "reverse",
         "until",
+        "backuntil",
         "step",
         "start",
+        "up",
+        "down",
     ]
 
     BOLD = "\033[1m"
