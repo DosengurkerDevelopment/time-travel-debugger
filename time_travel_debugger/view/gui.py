@@ -153,11 +153,19 @@ class GUI(object):
             placeholder="Enter line to break at", name="line_input"
         )
 
+        self._search_query_type_dropdown = Dropdown(
+            options=["var_change", "func_call", "break_hit"],
+            description="Search query type",
+        )
         self._search_input = Text(placeholder="Search...")
         self._search_input.observe(self._handle_search_input, names="value")
 
         self._search_results = Output()
-        display(self._search_input, self._search_results)
+        display(
+            self._search_input,
+            self._search_results,
+            self._search_query_type_dropdown,
+        )
 
         # Remove shadows from scrolling
         style = """
@@ -217,8 +225,9 @@ class GUI(object):
     def __exit__(self, *args, **kwargs):
         diffs, source_map = self._tracer.get_trace()
         search_engine = SearchEngine()
-        self._debugger = TimeTravelDebugger(diffs, source_map, self.update,
-                search_engine)
+        self._debugger = TimeTravelDebugger(
+            diffs, source_map, self.update, search_engine
+        )
         self._debugger.start_debugger()
         self._diff_slider.max = len(diffs) - 1
         self._function_dropdown.options = self._debugger.source_map.keys()
@@ -494,7 +503,11 @@ class GUI(object):
         self._line_input.disabled = change["new"] == "Function"
 
     def _handle_search_input(self, change):
-        # results = self._debugger.search(change["new"])
+        events = self._debugger.search(
+            self._search_query_type_dropdown.value, change["new"]
+        )
         with self._search_results:
             clear_output()
+            print(self._search_query_type_dropdown.value)
             print(change["new"])
+            print(events)
