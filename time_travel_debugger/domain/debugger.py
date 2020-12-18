@@ -493,7 +493,7 @@ class TimeTravelDebugger(object):
         func_states = self._state_machine.curr_diff.get_function_states()
         call_stack = []
         for state in func_states:
-            call_stack = call_stack + [(state.func_name)]
+            call_stack = call_stack + [(state.func_name, state.file_name)]
         lower_bound = max(0, _min)
         upper_bound = min(len(call_stack), _max)
         # print(f"lower:{lower_bound}, upper:{upper_bound}")

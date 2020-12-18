@@ -15,9 +15,6 @@ from ..domain.tracer import TimeTravelTracer
 from ..model.exec_state_diff import Action
 from .completer import CLICompleter
 
-# TODO: Signal handling on Ctrl-C, Ctrl-D
-# TODO: Error handling
-
 
 class TimeTravelCLI(object):
     """ Command line debugger that supports stepping backwards in time. """
@@ -33,6 +30,9 @@ class TimeTravelCLI(object):
         "step",
         "start",
     ]
+
+    BOLD = "\033[1m"
+    END = "\033[0m"
 
     def __init__(self, file=sys.stdout):
         # Stores the respective line number and variable changes for each
@@ -61,13 +61,11 @@ class TimeTravelCLI(object):
         try:
             cmd = input("(debugger) ")
         except KeyboardInterrupt:
+            print("\nKeyboardInterrupt", end="")
             return
         except EOFError:
-            cmd = input("\rReally quit? [y/N] ")
-            if cmd.lower() == "y":
-                return "quit"
-            else:
-                return None
+            print("quit")
+            return "quit"
 
         if not cmd:
             return self._last_command
@@ -171,10 +169,14 @@ class TimeTravelCLI(object):
             ]
 
             if len(possible_cmds) == 0:
-                self.log(f"Unknown command {repr(command)}. Possible commands are:")
+                self.log(
+                    f"Unknown command {repr(command)}. Possible commands are:"
+                )
                 possible_cmds = self.commands()
             elif len(possible_cmds) > 1 and command not in possible_cmds:
-                self.log(f"Ambiguous command {repr(command)}. Possible expansions are:")
+                self.log(
+                    f"Ambiguous command {repr(command)}. Possible expansions are:"
+                )
         else:
             possible_cmds = self.commands()
 
@@ -239,7 +241,9 @@ class TimeTravelCLI(object):
             above, below = [int(a) for a in arg.split()]
 
         if use_current:
-            code = self._debugger._source_map[self._debugger.curr_diff.func_name]
+            code = self._debugger._source_map[
+                self._debugger.curr_diff.func_name
+            ]
             source_lines = code["code"]
             line_number = code["start"]
         else:
@@ -365,23 +369,27 @@ class TimeTravelCLI(object):
         """ Continue execution backward until a breakpoint is hit """
         self._debugger.reverse()
 
+    def _print_callstack(self, stack):
+        for (frame, (func, file)) in reversed(list(enumerate(stack, start=1))):
+            print(f"#{frame}: {self.BOLD}{func}{self.END} at {file}")
+
     def where_command(self, arg=""):
         """ Print the call stack """
         params = {}
         if arg:
             params["bound"] = int(arg)
         call_stack = self._debugger.where(**params)
-        print(call_stack)
+        self._print_callstack(call_stack)
 
     def up_command(self, arg=""):
         """ Move up the call stack """
         call_stack = self._debugger.up()
-        print(call_stack)
+        self._print_callstack(call_stack)
 
     def down_command(self, arg=""):
         """ Move down the call stack """
         call_stack = self._debugger.down()
-        print(call_stack)
+        self._print_callstack(call_stack)
 
     def watch_command(self, arg=""):
         """ Insert a watchpoint """
@@ -418,7 +426,9 @@ class TimeTravelCLI(object):
             res = self._debugger.add_breakpoint(funcname=arg)
         else:
             filename, funcname = arg.split(":")
-            res = self._debugger.add_breakpoint(filename=filename, funcname=funcname)
+            res = self._debugger.add_breakpoint(
+                filename=filename, funcname=funcname
+            )
 
         if res is not None:
             print(f"Breakpoint {res.id} added.")
@@ -428,7 +438,9 @@ class TimeTravelCLI(object):
     def breakpoints_command(self, arg=""):
         """ List all breakpoints """
         table_template = "{:^15}|{:^6}|{:^20}|{:^15}|{:^20}"
-        header = table_template.format("id", "type", "location", "active", "condition")
+        header = table_template.format(
+            "id", "type", "location", "active", "condition"
+        )
 
         print(header)
         print("-" * len(header))
