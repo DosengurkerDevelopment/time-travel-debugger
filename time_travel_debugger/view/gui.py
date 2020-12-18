@@ -517,4 +517,10 @@ class GUI(object):
                     icon="angle-right",
                     layout=Layout(width="20px", height="20px"),
                 )
+                goto.on_click(
+                    self._debugger.step_to_index(
+                        event.exec_point, ignore_breakpoints=True
+                    )
+                )
                 display(goto)
+                print(event)
