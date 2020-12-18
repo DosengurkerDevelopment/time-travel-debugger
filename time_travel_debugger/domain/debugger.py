@@ -15,7 +15,7 @@ class Direction(Enum):
 
 
 class FunctionStates(object):
-    """Helper class for manaing the absolut states of functions"""
+    """Helper class for managing the absolut states of functions"""
 
     def __init__(self):
         # maps functions to list of stored scopes
@@ -126,7 +126,6 @@ class StateMachine(object):
         self._direction = Direction.FORWARD
         if not self.at_end:
             # step one step forward
-            print(self.curr_line)
             prev_diff = deepcopy(self.curr_diff)
             self._exec_point += 1
             new_diff = deepcopy(self.curr_diff)
@@ -143,7 +142,8 @@ class StateMachine(object):
             elif new_diff.action == Action.EXCEPTION:
                 pass
             else:
-                raise Exception(f"Invalid Action: '{new_diff.action}'")
+                raise ValueError(f"Invalid Action: '{new_diff.action}'")
+
             if self.next_action == Action.RET:
                 # skip the implicit return statement
                 self._exec_point += 1
@@ -200,8 +200,7 @@ class StateMachine(object):
 
     @property
     def curr_diff(self):
-        diff = self._exec_state_diffs[self._exec_point]
-        return diff
+        return self._exec_state_diffs[self._exec_point]
 
     @property
     def prev_diff(self):
@@ -346,14 +345,11 @@ class TimeTravelDebugger(object):
         if self.curr_diff.file_name != bp.abs_filename:
             return False
         if bp.breakpoint_type == BPType.FUNC:
-            print(
-                self._state_machine.direction,
-                self.curr_line,
-                bp.startline,
-                bp.endline,
-            )
+            # Break at the first line if we're going forward
             if self._state_machine.direction == Direction.FORWARD:
                 return self.is_at_line(bp.startline)
+            # Otherwise we want to break at the last line of the function
+            # a.k.a the first line from behind
             if self._state_machine.direction == Direction.BACKWARD:
                 return self.is_at_line(bp.endline)
         else:
@@ -401,7 +397,7 @@ class TimeTravelDebugger(object):
         curr_depth = self._state_machine.curr_depth
         # only take in account return actions that happened in the same
         # function scope (in the same depth)
-        print(curr_depth)
+        # print(curr_depth)
         while (
             not (
                 curr_depth == self._state_machine.curr_depth + 1
@@ -410,7 +406,7 @@ class TimeTravelDebugger(object):
             and not self._state_machine.at_end
         ):
             self._state_machine.forward()
-            print(curr_depth)
+            # print(curr_depth)
 
         if not self._state_machine.at_end:
             self._state_machine.backward()
@@ -539,9 +535,6 @@ class TimeTravelDebugger(object):
         else:
             id = max([b.id for b in self.breakpoints]) + 1
 
-        if not filename:
-            filename = self.curr_diff.file_name
-
         if not lineno and funcname:
             if funcname not in self._source_map:
                 return None
@@ -549,6 +542,7 @@ class TimeTravelDebugger(object):
             source = self.get_source_for_func(funcname)
             start = source["start"]
             code = source["code"]
+            filename = filename or source["filename"]
             startline = start + 1
             endline = start + len(code) - 1
             breakpoint = FunctionBreakpoint(
@@ -562,7 +556,9 @@ class TimeTravelDebugger(object):
 
             # Find the code object corresponding to this line number and
             # filename
-            source = self.find_source_for_location(filename, lineno)
+            source = self.find_source_for_location(
+                filename or self.curr_diff.file_name, lineno
+            )
             lineno = self.find_next_executable_line(lineno, source)
 
             breakpoint = Breakpoint(id, lineno, filename, cond)
