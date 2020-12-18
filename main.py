@@ -12,11 +12,10 @@ def list_comprehension_test(max):
 
 def test1(a):
     x = 100
+    id(a)
     while a > 5:
-        b = id(a)
         # comment
         a -= 1
-        x -= 1
     return
 
 
@@ -65,6 +64,14 @@ def nested_classes_test(a, b):
 
 def more_calls(a):
     a = id(a) + id(a)
+
+def test2():
+    a = 5
+    b = 6
+    id(a)
+    g = "penis"
+    module(a, b)
+    c = 7
 
 
 def remove_html_markup(s):
@@ -134,6 +141,8 @@ def throw_exception_test():
 
 if __name__ == "__main__":
     with TimeTravelCLI():
+        # test1(10)
+        test2()
         #  watch_test()
         #  id(12) # works
         # test1(7)  # works
@@ -145,5 +154,5 @@ if __name__ == "__main__":
         # lambda_test(2)
         #  nested_classes_test(1,2) #  not working yet
         #  more_calls(1) #  works
-        remove_html_markup("<tag>hello</tag>")
+        # remove_html_markup("<tag>hello</tag>")
         #  throw_exception_test()

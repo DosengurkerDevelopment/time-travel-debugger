@@ -15,6 +15,13 @@ from ..domain.tracer import TimeTravelTracer
 from ..model.exec_state_diff import Action
 from .completer import CLICompleter
 
+_next_inputs = list()
+
+
+def next_inputs(*args):
+    global _next_inputs
+    _next_inputs.extend(reversed(args))
+
 
 class TimeTravelCLI(object):
     """ Command line debugger that supports stepping backwards in time. """
@@ -47,6 +54,7 @@ class TimeTravelCLI(object):
         self._last_command = ""
         self._draw_update = True
         self._lexer = lexers.get_lexer_by_name("Python")
+        self._quit = False
 
     def __enter__(self, *args, **kwargs):
         self._tracer.set_trace()
@@ -61,14 +69,19 @@ class TimeTravelCLI(object):
         self.execute()
 
     def get_input(self):
-        try:
-            cmd = input("(debugger) ")
-        except KeyboardInterrupt:
-            print("\nKeyboardInterrupt", end="")
-            return
-        except EOFError:
-            print("quit")
-            return "quit"
+        global _next_inputs
+        if len(_next_inputs) > 0:
+            cmd = _next_inputs.pop()
+            print("(debugger) " + cmd)
+        else:
+            try:
+                cmd = input("(debugger) ")
+            except KeyboardInterrupt:
+                print("\nKeyboardInterrupt", end="")
+                return
+            except EOFError:
+                print("quit")
+                return "quit"
 
         if not cmd:
             return self._last_command
@@ -101,13 +114,16 @@ class TimeTravelCLI(object):
         else:
             self._draw_update = False
 
-        self.execute()
+        if self._quit:
+            return
+        else:
+            self.execute()
 
     def update(self, state):
         self._current_state = state
 
         if self._draw_update:
-            os.system("clear")
+            # os.system("clear")
             self.list_command()
 
             for wp in self._debugger.watchpoints:
@@ -346,6 +362,10 @@ class TimeTravelCLI(object):
                     return "No such function!"
                 #  parse func name to its starting line
                 line_no = int(source_map[line_or_func]["start"])
+            # Find abs filename:
+            for key, value in source_map.items():
+                if os.path.basename(value["filename"]) == file_name:
+                    file_name = value["filename"]
             return {"file_name": file_name, "line_no": line_no}
 
     def until_command(self, arg=""):
@@ -472,4 +492,4 @@ class TimeTravelCLI(object):
         self._debugger.add_breakpoint(lineno=lineno, cond=condition)
 
     def quit_command(self, arg=""):
-        sys.exit(1)
+        self._quit = True

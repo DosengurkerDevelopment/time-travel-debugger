@@ -390,11 +390,9 @@ class TimeTravelDebugger(object):
 
         return self.break_at_current()
 
-    @trigger_update
     def next(self):
         self.until()
 
-    @trigger_update
     def previous(self):
         self.until(direction=Direction.BACKWARD)
 
