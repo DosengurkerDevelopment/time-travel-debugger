@@ -100,6 +100,7 @@ class ExecStateDiff(object):
 
     @property
     def changed(self):
+        """ return the state of both changed and added variables """
         return {**self.added, **{k: v.after for (k, v) in self.updated.items()}}
 
     @property
