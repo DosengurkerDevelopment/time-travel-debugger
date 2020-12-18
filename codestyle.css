@@ -22,10 +22,14 @@ code > span:hover {
 }
 
 .currentline {
-	animation: current 3s infinite;
+	animation: current 1.5s infinite;
+}
+
+.currentline-running {
+	background-color: palegreen;
 }
 
 @keyframes current {
 	0%{ background-color: transparent; }
-	50%{ background-color: palegreen}
+	50%{ background-color: palegreen;}
 }

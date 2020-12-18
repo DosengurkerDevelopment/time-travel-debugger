@@ -246,11 +246,11 @@ class StateMachine(object):
 
 class TimeTravelDebugger(object):
     def __init__(
-        self, 
-        exec_state_diffs: List[ExecStateDiff], 
-        source_map, 
+        self,
+        exec_state_diffs: List[ExecStateDiff],
+        source_map,
         update,
-        search_engine
+        search_engine,
     ):
         # Dictionary that contains source code objects for each frame
         self._source_map = source_map
@@ -267,7 +267,7 @@ class TimeTravelDebugger(object):
         self._search_engine = search_engine
 
         # needed to check if we  need to reset the search engine
-        self._last_break_points  = []
+        self._last_break_points = []
 
         self._update = update
 
@@ -472,16 +472,23 @@ class TimeTravelDebugger(object):
 
     def search(self, event_type, query):
         event_type = EventType(event_type)
-        if self._last_search_exec_point != self._state_machine._exec_point or \
-                self._last_break_points != self._breakpoints:
+        if (
+            self._last_search_exec_point != self._state_machine._exec_point
+            or self._last_break_points != self._breakpoints
+        ):
             self._last_search_exec_point = self._state_machine._exec_point
             self._last_break_points = deepcopy(self._breakpoints)
-            self._search_engine.init(\
-                    self._state_machine._exec_state_diffs, self._breakpoints, self._watchpoints)
+            self._search_engine.init(
+                self._state_machine._exec_state_diffs,
+                self._breakpoints,
+                self._watchpoints,
+            )
         return self._search_engine.search_events(event_type, query)
 
     @trigger_update
-    def until(self, line_no=0, file_name="", func=False, direction=Direction.FORWARD):
+    def until(
+        self, line_no=0, file_name="", func=False, direction=Direction.FORWARD
+    ):
         func_name = self.curr_diff.func_name
         if line_no:
             target = line_no
@@ -496,8 +503,9 @@ class TimeTravelDebugger(object):
         if direction == Direction.FORWARD:
             move = self._state_machine.forward
             at_limit = lambda: self.at_end
-            stepped_out_of_function =\
-                    lambda: self.curr_diff.action == Action.RET
+            stepped_out_of_function = (
+                lambda: self.curr_diff.action == Action.RET
+            )
 
             # find next executable line for target
             # if there is no executable line in the current function run till end
@@ -507,8 +515,9 @@ class TimeTravelDebugger(object):
         else:
             move = self._state_machine.backward
             at_limit = lambda: self.at_start
-            stepped_out_of_function =\
-                    lambda: self._state_machine.next_action == Action.CALL
+            stepped_out_of_function = (
+                lambda: self._state_machine.next_action == Action.CALL
+            )
 
             # find prev executable line for target
             # if there is no executable line in the current function run till end
@@ -572,7 +581,7 @@ class TimeTravelDebugger(object):
             self._call_stack_return_lines.append(self.curr_line)
             # move backwards out of the function (-1 will be invalid target and thus
             # just run backwards till call)
-            self.until(line_no= -1, direction = Direction.BACKWARD)
+            self.until(line_no=-1, direction=Direction.BACKWARD)
         return self.get_callstack_safe_bounds(0, self._call_stack_depth)
 
     def get_breakpoint(self, id):
@@ -613,6 +622,9 @@ class TimeTravelDebugger(object):
             source = self.find_source_for_location(filename, lineno)
             lineno = self.find_next_executable_line(lineno, source)
 
+            if lineno is None:
+                return None
+
             breakpoint = Breakpoint(id, lineno, filename, cond)
 
         self.breakpoints.append(breakpoint)
@@ -625,7 +637,7 @@ class TimeTravelDebugger(object):
     def get_func_name_for_line(self, line_no):
         for name, src in self.source_map.items():
             start_line = src["start"]
-            last_line = start_line + len(src["code"]) -1
+            last_line = start_line + len(src["code"]) - 1
             code_lines = list(range(start_line, last_line))
             if line_no in code_lines:
                 return name
@@ -737,6 +749,13 @@ class TimeTravelDebugger(object):
         breakpoint = self.get_breakpoint(id)
         if breakpoint is not None:
             breakpoint.enable()
+            return True
+        return False
+
+    def toggle_breakpoint(self, id):
+        breakpoint = self.get_breakpoint(id)
+        if breakpoint is not None:
+            breakpoint.toggle()
             return True
         return False
 

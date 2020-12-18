@@ -2,6 +2,7 @@ import os
 
 from IPython.core.display import Markdown, clear_output, display, Javascript
 from ipywidgets import (
+    GridBox,
     Label,
     ToggleButtons,
     Valid,
@@ -15,6 +16,7 @@ from ipywidgets import (
     Output,
     Play,
     Text,
+    Tab,
     ToggleButton,
     VBox,
     jsdlink,
@@ -30,43 +32,42 @@ from ..model.breakpoint import BPType
 here = os.path.dirname(__file__)
 root = os.path.abspath(os.path.join(here, "../../"))
 cssfile = open(os.path.join(root, "codestyle.css")).read()
-javascript = open(os.path.join(root, "scrollIntoView.js")).read()
 
 
 class GUI(object):
 
     _BUTTONS = {
-        "step": {
-            "icon": "step-forward",
-            "tooltip": "Step to the next instruction",
-        },
-        "next": {
-            "icon": "share",
-            "tooltip": "Go to the next sourceline",
-        },
         "backstep": {
             "icon": "step-backward",
             "tooltip": "Step to the previous instruction",
+        },
+        "step": {
+            "icon": "step-forward",
+            "tooltip": "Step to the next instruction",
         },
         "previous": {
             "icon": "reply",
             "tooltip": "Go to th previous sourceline",
         },
-        "finish": {
-            "icon": "arrow-down",
-            "tooltip": "Go to the end of the program",
+        "next": {
+            "icon": "share",
+            "tooltip": "Go to the next sourceline",
         },
         "start": {
             "icon": "arrow-up",
             "tooltip": "Go to the start of the program",
         },
-        "continue": {
-            "icon": "fast-forward",
-            "tooltip": "Continue execution until breakpoint is hit",
+        "finish": {
+            "icon": "arrow-down",
+            "tooltip": "Go to the end of the program",
         },
         "reverse": {
             "icon": "fast-backward",
             "tooltip": "Continue execution backwards until breakpoint is hit",
+        },
+        "continue": {
+            "icon": "fast-forward",
+            "tooltip": "Continue execution until breakpoint is hit",
         },
     }
 
@@ -77,19 +78,15 @@ class GUI(object):
         self._current_state = None
         self._debugger = None
 
-        self._layout = GridspecLayout(7, 4, grid_gap="20px")
-
         self._code_output = HTML()
         self._var_output = Output()
         self._watchpoint_output = Output()
         self._breakpoint_output = Output()
 
-        display(self._breakpoint_output)
-
         self._diff_slider = IntSlider(
             min=1,
             readout=False,
-            layout=Layout(width="100%"),
+            layout=Layout(width="99%"),
             tooltip="Execution timeline",
         )
         self._diff_slider.observe(self._handle_diff_slider, names="value")
@@ -118,15 +115,27 @@ class GUI(object):
         self._reverse_autoplay.observe(self._handle_reverse_button)
 
         self._watchpoint_input = Text(
-            layout=Layout(width="200px"),
-            placeholder="Enter expression to watch",
+            layout=Layout(width="150px"),
+            placeholder="Watch expression",
         )
         self._add_watchpoint = Button(
             icon="plus",
             tooltip="Add an expression or variable to watch",
-            layout=Layout(width="40px"),
+            layout=Layout(width="50px"),
         )
         self._add_watchpoint.on_click(self.watch_command)
+
+        self._watchpoint_dropdown = Dropdown(
+            layout=Layout(width="150px"),
+        )
+        self._remove_watchpoint = Button(
+            icon="trash",
+            tooltip="Remove a watchpoint",
+            layout=Layout(width="50px"),
+        )
+        self._remove_watchpoint.on_click(self.unwatch_command)
+
+        self._breakpoint_layout = GridspecLayout(3, 1)
 
         self._add_breakpoint = Button(
             icon="plus",
@@ -137,27 +146,60 @@ class GUI(object):
         self._add_breakpoint.on_click(self._handle_breakpoint)
 
         self._disable_breakpoint_button = Button(
-            icon="eye-slash", tooltip="Disable breakpoint"
+            icon="eye-slash",
+            tooltip="Disable breakpoint",
+            layout=Layout(width="50px"),
         )
+        self._disable_breakpoint_button.on_click(self.disable_command)
 
-        self._breakpoint_dropdown = Dropdown()
+        self._remove_breakpoint_button = Button(
+            icon="trash",
+            tooltip="Remove breakpoint",
+            layout=Layout(width="50px"),
+        )
+        self._remove_breakpoint_button.on_click(self.delete_command)
 
-        self._function_dropdown = Dropdown(layout=Layout(width="150px"))
+        self._breakpoint_dropdown = Dropdown(layout=Layout(width="70px"))
+
+        self._function_dropdown = Dropdown(layout=Layout(width="200px"))
         self._function_dropdown.disabled = True
-        self._breakpoint_type = ToggleButtons(
-            options=["Line", "Function", "Conditional"], value="Line"
+        self._breakpoint_type = Dropdown(
+            options=["Line", "Function", "Conditional"],
+            value="Line",
+            layout=Layout(width="100px"),
         )
+
         self._breakpoint_type.observe(
             self._handle_breakpoint_type, names="value"
         )
+
         self._condition_input = Text(
             placeholder="Enter condition", layout=Layout(width="200px")
         )
         self._condition_input.disabled = True
+
         self._line_input = Text(
             placeholder="Line Number",
             name="line_input",
             layout=Layout(width="100px"),
+        )
+
+        self._breakpoint_layout = VBox(
+            [
+                HBox(
+                    [
+                        self._add_breakpoint,
+                        self._breakpoint_type,
+                        self._function_dropdown,
+                        self._line_input,
+                        self._condition_input,
+                        self._breakpoint_dropdown,
+                        self._remove_breakpoint_button,
+                        self._disable_breakpoint_button,
+                    ]
+                ),
+                self._breakpoint_output,
+            ]
         )
 
         self._search_query_type_dropdown = Dropdown(
@@ -168,10 +210,12 @@ class GUI(object):
         self._search_input.observe(self._handle_search_input, names="value")
 
         self._search_results = Output()
-        display(
-            self._search_input,
-            self._search_results,
-            self._search_query_type_dropdown,
+        self._search_layout = VBox(
+            [
+                self._search_input,
+                self._search_results,
+                self._search_query_type_dropdown,
+            ]
         )
 
         # Remove shadows from scrolling
@@ -189,42 +233,52 @@ class GUI(object):
         for key, item in self._BUTTONS.items():
             self.register_button(key, **item)
 
-        self._buttons = HBox(
-            [
-                HBox(self.get_buttons("backstep", "step")),
-                HBox(self.get_buttons("previous", "next")),
-                HBox(self.get_buttons("start", "finish")),
-                HBox(self.get_buttons("reverse", "continue")),
-            ]
-        )
+        self._code_layout = GridspecLayout(4, 4, grid_gap="20px")
 
-        self._layout[0:4, 0:3] = HBox(
+        self._code_layout[0:4, 0:3] = HBox(
             [self._code_output],
             layout=Layout(
                 height="500px", overflow_y="scroll", border="2px solid black"
             ),
         )
-        self._layout[0:2, 3] = self._var_output
-        self._layout[6, :] = self._diff_slider
-        self._layout[2:4, 3] = self._watchpoint_output
-        self._layout[5, :3] = self._buttons
-        self._layout[4, :3] = HBox(
-            [self._autoplay, self._speed_slider, self._reverse_autoplay]
-        )
-        self._layout[4, 3] = HBox(
-            [self._add_watchpoint, self._watchpoint_input]
-        )
-        self._layout[6, :] = HBox(
+        self._code_layout[0:2, 3] = self._var_output
+        self._code_layout[2:4, 3] = VBox(
             [
-                self._add_breakpoint,
-                self._breakpoint_type,
-                self._function_dropdown,
-                self._line_input,
-                self._condition_input,
+                HBox([self._add_watchpoint, self._watchpoint_input]),
+                HBox([self._remove_watchpoint, self._watchpoint_dropdown]),
+                self._watchpoint_output,
             ]
         )
 
-        display(self._layout)
+        self._code_nav_layout = VBox(
+            [
+                HBox(
+                    [
+                        *self.get_buttons(),
+                        self._autoplay,
+                        self._reverse_autoplay,
+                        self._speed_slider,
+                    ]
+                ),
+                self._diff_slider,
+                self._code_layout,
+            ]
+        )
+
+        self._main_layout = Tab(
+            [
+                self._code_nav_layout,
+                self._breakpoint_layout,
+                self._search_layout,
+            ],
+            layout=Layout(height="900px"),
+        )
+
+        self._main_layout.set_title(0, "Code")
+        self._main_layout.set_title(1, "Breakpoints")
+        self._main_layout.set_title(2, "Search")
+
+        display(self._main_layout)
 
     def __enter__(self, *args, **kwargs):
         self._tracer.set_trace()
@@ -240,6 +294,10 @@ class GUI(object):
         self._function_dropdown.options = self._debugger.source_map.keys()
 
     def get_buttons(self, *keys):
+        if not keys:
+            return [
+                self._BUTTONS[key]["button"] for key in self._BUTTONS.keys()
+            ]
         return [self._BUTTONS[key]["button"] for key in keys]
 
     def register_button(self, key, **kwargs):
@@ -264,6 +322,9 @@ class GUI(object):
         self._breakpoint_dropdown.options = [
             b.id for b in self._debugger.breakpoints
         ]
+        self._watchpoint_dropdown.options = [
+            b.id for b in self._debugger.watchpoints
+        ]
 
         self.list_command()
 
@@ -278,14 +339,6 @@ class GUI(object):
         with self._watchpoint_output:
             clear_output(wait=True)
             self.list_watch_command()
-
-        display(
-            Javascript(
-                javascript
-                + f'\nscrollToView("True-{self._debugger.curr_line - 10}")'
-                + f'\nscrollToView("True-{self._debugger.curr_line + 10}")'
-            )
-        )
 
     def log(self, *objects, sep=" ", end="\n", flush=False):
         """Like print(), but always sending to file given at initialization,
@@ -362,8 +415,10 @@ class GUI(object):
 
         elem = doc.get_element_by_id(f"True-{display_current_line}", None)
         if elem is not None:
-            if not current_line_breakpoint:
+            if not current_line_breakpoint and not self._autoplay._playing:
                 elem.set("class", "currentline")
+            elif self._autoplay._playing:
+                elem.set("class", "currentline-running")
             else:
                 elem.set("class", "hit")
 
@@ -399,12 +454,13 @@ class GUI(object):
         """ Insert a watchpoint """
         arg = self._watchpoint_input.value
         self._debugger.add_watchpoint(expression=arg)
+        self._watchpoint_input.value = ""
         self.update()
 
     def list_watch_command(self):
         header = "| ID | Expression | Value |\n"
         split = "|---|---|---|\n"
-        template = "|{}|`{}`|`{!r}`|"
+        template = "|{}|`{}`|`{!r}`|\n"
         wpstr = header + split
 
         for wp in self._debugger.watchpoints:
@@ -412,12 +468,16 @@ class GUI(object):
 
         display(Markdown(wpstr))
 
-    def unwatch_command(self, arg=""):
+    def unwatch_command(self, change):
         """ Remove a watchpoint """
+        arg = self._watchpoint_dropdown.value
+        if not arg:
+            return
         if not self._debugger.remove_watchpoint(int(arg)):
             print(f"Watchpoint with id {arg} does not exist.")
         else:
             print(f"Successfully removed watchpoint {arg}.")
+            self.update()
 
     def break_command(self, arg=""):
         """ Insert a breakpoint at the given location """
@@ -452,13 +512,21 @@ class GUI(object):
 
         display(Markdown(bpstr))
 
-    def delete_command(self, arg=""):
+    def delete_command(self, change):
         """ Remove the given breakpoint """
+        arg = self._breakpoint_dropdown.value
+        if not arg:
+            return
         self._debugger.remove_breakpoint(int(arg))
+        self.update()
 
     def disable_command(self, arg=""):
         """ Disable the given breakpoint """
+        arg = self._breakpoint_dropdown.value
+        if not arg:
+            return
         self._debugger.disable_breakpoint(int(arg))
+        self.update()
 
     def enable_command(self, arg=""):
         """ Enable the given breakpoint """
@@ -481,16 +549,19 @@ class GUI(object):
         condition = self._condition_input.value
 
         if type != "Function":
-            if not line.isnumeric():
+            if not line.isnumeric() or line is None:
                 self._line_input.value = ""
                 self._line_input.placeholder = "Please enter a valid number!"
+                return
+
         if type == "Conditional":
             try:
                 eval(condition)
             except SyntaxError:
-                if not self._condition_input.value:
+                if self._condition_input.value:
                     self._condition_input.placeholder = "Invalid expression!"
                 self._condition_input.value = ""
+                return
 
             except NameError:
                 pass
