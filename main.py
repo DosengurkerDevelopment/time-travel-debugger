@@ -136,7 +136,7 @@ if __name__ == "__main__":
     with TimeTravelCLI():
         #  watch_test()
         #  id(12) # works
-        test1(7)  # works
+        # test1(7)  # works
         #  recursive_test(9) # works
         #  nested_functions_test()
         #  dict_test(123) #  works
@@ -145,5 +145,5 @@ if __name__ == "__main__":
         # lambda_test(2)
         #  nested_classes_test(1,2) #  not working yet
         #  more_calls(1) #  works
-        #  remove_html_markup("<tag>hello</tag>")
+        remove_html_markup("<tag>hello</tag>")
         #  throw_exception_test()

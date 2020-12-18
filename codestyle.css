@@ -1,0 +1,31 @@
+code > span:hover {
+		background-color: lightgrey;
+		text-decoration: none;	
+}
+
+.hit {
+	animation: blinking 1.5s infinite;
+}
+
+@keyframes blinking{
+	0%{   background-color: transparent;   }
+	50%{   background-color: orangered; }
+	100%{  background-color: transparent;   }
+}
+
+.breakpoint {
+		background-color: orangered;
+}
+
+.inactive {
+		background-color: lightpink;
+}
+
+.currentline {
+	animation: current 3s infinite;
+}
+
+@keyframes current {
+	0%{ background-color: transparent; }
+	50%{ background-color: palegreen}
+}

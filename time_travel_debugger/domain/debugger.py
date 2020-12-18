@@ -7,6 +7,7 @@ from ..model.breakpoint import Breakpoint, FunctionBreakpoint, BPType
 from ..model.exec_state_diff import ExecStateDiff, Action
 from copy import deepcopy
 
+
 class Direction(Enum):
 
     FORWARD = 1
@@ -125,6 +126,7 @@ class StateMachine(object):
         self._direction = Direction.FORWARD
         if not self.at_end:
             # step one step forward
+            print(self.curr_line)
             prev_diff = deepcopy(self.curr_diff)
             self._exec_point += 1
             new_diff = deepcopy(self.curr_diff)
@@ -135,7 +137,9 @@ class StateMachine(object):
             elif new_diff.action == Action.RET:
                 self._func_states.ret(new_diff.func_name)
             elif new_diff.action == Action.UPDATE:
-                self._func_states.update(new_diff.func_name, new_diff.changed.copy())
+                self._func_states.update(
+                    new_diff.func_name, new_diff.changed.copy()
+                )
             elif new_diff.action == Action.EXCEPTION:
                 pass
             else:
@@ -163,7 +167,9 @@ class StateMachine(object):
                 self._func_states.revert_ret(new_diff.func_name)
             elif prev_diff.action == Action.UPDATE:
                 self._func_states.revert_update(
-                    new_diff.func_name, prev_diff.added.copy(), prev_diff.updated.copy()
+                    new_diff.func_name,
+                    prev_diff.added.copy(),
+                    prev_diff.updated.copy(),
                 )
             elif prev_diff.action == Action.EXCEPTION:
                 pass
@@ -178,12 +184,15 @@ class StateMachine(object):
 
     @property
     def at_start(self):
-        return self._exec_point < 2 
+        return self._exec_point < 2
 
     @property
     def at_end(self):
         # if the current diff is the last, or if we reached an Exception
-        return self._exec_point == len(self._exec_state_diffs) - 1 or self.curr_diff.action == Action.EXCEPTION
+        return (
+            self._exec_point == len(self._exec_state_diffs) - 1
+            or self.curr_diff.action == Action.EXCEPTION
+        )
 
     @property
     def curr_line(self):
@@ -233,7 +242,9 @@ class StateMachine(object):
 
 
 class TimeTravelDebugger(object):
-    def __init__(self, exec_state_diffs: List[ExecStateDiff], source_map, update):
+    def __init__(
+        self, exec_state_diffs: List[ExecStateDiff], source_map, update
+    ):
         # Dictionary that contains source code objects for each frame
         self._source_map = source_map
         # The current state of variables:
@@ -246,8 +257,9 @@ class TimeTravelDebugger(object):
         self._update = update
 
     def trigger_update(func):
-        """ triggers a UI update by calling the corresponding method for the
+        """triggers a UI update by calling the corresponding method for the
         currently used UI"""
+
         @wraps(func)
         def nfunc(self, *args, **kwargs):
             ret = func(self, *args, **kwargs)
@@ -334,12 +346,20 @@ class TimeTravelDebugger(object):
         if self.curr_diff.file_name != bp.abs_filename:
             return False
         if bp.breakpoint_type == BPType.FUNC:
+            print(
+                self._state_machine.direction,
+                self.curr_line,
+                bp.startline,
+                bp.endline,
+            )
             if self._state_machine.direction == Direction.FORWARD:
                 return self.is_at_line(bp.startline)
             if self._state_machine.direction == Direction.BACKWARD:
                 return self.is_at_line(bp.endline)
         else:
-            return self.is_at_line(bp.lineno) and bp.eval_condition(self.curr_state)
+            return self.is_at_line(bp.lineno) and bp.eval_condition(
+                self.curr_state
+            )
 
     def start_debugger(self):
         """Interaction loop that is run after the execution of the code inside
@@ -427,31 +447,33 @@ class TimeTravelDebugger(object):
         if line_no:
             target = line_no
         else:
-            if direction==Direction.FORWARD:
+            if direction == Direction.FORWARD:
                 target = self.curr_line + 1
             else:
                 target = self.curr_line - 1
 
         # depending on the move dir define action and limits of the until
         # command
-        if direction==Direction.FORWARD:
+        if direction == Direction.FORWARD:
             move = self._state_machine.forward
-            at_limit = lambda: self.at_end 
-            stepped_out_of_function = lambda: \
-                     self.curr_diff.action == Action.RET
+            at_limit = lambda: self.at_end
+            stepped_out_of_function = (
+                lambda: self.curr_diff.action == Action.RET
+            )
             # find next executable line for target
             # if there is no executable line in the current function run till end
-            target = self.find_next_executable_line(target, funcname = func_name)
+            target = self.find_next_executable_line(target, funcname=func_name)
             # make sure we dont stay at the same line
             self._state_machine.forward()
         else:
             move = self._state_machine.backward
             at_limit = lambda: self.at_start
-            stepped_out_of_function = lambda: \
-                    self._state_machine.next_action == Action.CALL
+            stepped_out_of_function = (
+                lambda: self._state_machine.next_action == Action.CALL
+            )
             # find prev executable line for target
             # if there is no executable line in the current function run till end
-            target = self.find_prev_executable_line(target, funcname = func_name)
+            target = self.find_prev_executable_line(target, funcname=func_name)
             # make sure we dont stay at the same line
             self._state_machine.backward()
 
@@ -552,7 +574,9 @@ class TimeTravelDebugger(object):
             code = source["code"]
             startline = start + 1
             endline = start + len(code) - 1
-            breakpoint = FunctionBreakpoint(id, funcname, filename, startline, endline)
+            breakpoint = FunctionBreakpoint(
+                id, funcname, filename, startline, endline
+            )
         else:
             try:
                 lineno = int(lineno)
@@ -612,7 +636,9 @@ class TimeTravelDebugger(object):
             source_code = source["code"]
 
         try:
-            while not self.is_executable(source_code[line_number - starting_line]):
+            while not self.is_executable(
+                source_code[line_number - starting_line]
+            ):
                 line_number += 1
             # function definition is not executable
             if line_number == starting_line:
@@ -633,7 +659,9 @@ class TimeTravelDebugger(object):
             source_code = source["code"]
 
         try:
-            while not self.is_executable(source_code[line_number - starting_line]):
+            while not self.is_executable(
+                source_code[line_number - starting_line]
+            ):
                 line_number -= 1
             # function definition is not executable
             if line_number == starting_line:
