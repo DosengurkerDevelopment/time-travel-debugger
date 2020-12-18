@@ -89,7 +89,6 @@ class GUI(object):
             min=1,
             readout=False,
             layout=Layout(width="100%"),
-            continuous_update=True,
             tooltip="Execution timeline",
         )
         self._diff_slider.observe(self._handle_diff_slider, names="value")
@@ -451,8 +450,10 @@ class GUI(object):
             try:
                 eval(condition)
             except SyntaxError:
+                if not self._condition_input.value:
+                    self._condition_input.placeholder = "Invalid expression!"
                 self._condition_input.value = ""
-                self._condition_input.placeholder = "Invalid expression!"
+
             except NameError:
                 pass
 
