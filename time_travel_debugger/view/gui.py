@@ -2,6 +2,7 @@ import os
 
 from IPython.core.display import Markdown, clear_output, display, Javascript
 from ipywidgets import (
+    Label,
     ToggleButtons,
     Valid,
     Dropdown,
@@ -36,39 +37,35 @@ class GUI(object):
 
     _BUTTONS = {
         "step": {
-            "description": "",
             "icon": "step-forward",
             "tooltip": "Step to the next instruction",
         },
         "next": {
-            "description": "",
-            "icon": "fast-forward",
+            "icon": "share",
             "tooltip": "Go to the next sourceline",
         },
         "backstep": {
-            "description": "",
             "icon": "step-backward",
             "tooltip": "Step to the previous instruction",
         },
         "previous": {
-            "description": "",
-            "icon": "fast-backward",
+            "icon": "reply",
             "tooltip": "Go to th previous sourceline",
         },
         "finish": {
-            "description": "Finish",
+            "icon": "arrow-down",
             "tooltip": "Go to the end of the program",
         },
         "start": {
-            "description": "Start",
+            "icon": "arrow-up",
             "tooltip": "Go to the start of the program",
         },
         "continue": {
-            "description": "Continue",
+            "icon": "fast-forward",
             "tooltip": "Continue execution until breakpoint is hit",
         },
         "reverse": {
-            "description": "Reverse",
+            "icon": "fast-backward",
             "tooltip": "Continue execution backwards until breakpoint is hit",
         },
     }
@@ -80,7 +77,7 @@ class GUI(object):
         self._current_state = None
         self._debugger = None
 
-        self._layout = GridspecLayout(7, 4)
+        self._layout = GridspecLayout(7, 4, grid_gap="20px")
 
         self._code_output = HTML()
         self._var_output = Output()
@@ -97,7 +94,10 @@ class GUI(object):
         )
         self._diff_slider.observe(self._handle_diff_slider, names="value")
 
-        self._autoplay = Play(tooltip="Automatic playback of the execution")
+        self._autoplay = Play(
+            tooltip="Automatic playback of the execution",
+            layout=Layout(height="30px"),
+        )
         self._auto_link = jsdlink(
             (self._autoplay, "value"), (self._diff_slider, "value")
         )
@@ -110,7 +110,10 @@ class GUI(object):
         )
 
         self._reverse_autoplay = ToggleButton(
-            value=False, icon="history", tooltip="Reverse autoplay"
+            value=False,
+            icon="history",
+            tooltip="Reverse autoplay",
+            layout=Layout(width="40px"),
         )
         self._reverse_autoplay.observe(self._handle_reverse_button)
 
@@ -119,17 +122,17 @@ class GUI(object):
             placeholder="Enter expression to watch",
         )
         self._add_watchpoint = Button(
-            description="Add watchpoint",
             icon="plus",
             tooltip="Add an expression or variable to watch",
+            layout=Layout(width="40px"),
         )
         self._add_watchpoint.on_click(self.watch_command)
 
         self._add_breakpoint = Button(
             icon="plus",
-            description="Add breakpoint",
             tooltip="Add a breakpoint",
             name="breakpoint_button",
+            layout=Layout(width="40px"),
         )
         self._add_breakpoint.on_click(self._handle_breakpoint)
 
@@ -139,7 +142,7 @@ class GUI(object):
 
         self._breakpoint_dropdown = Dropdown()
 
-        self._function_dropdown = Dropdown()
+        self._function_dropdown = Dropdown(layout=Layout(width="150px"))
         self._function_dropdown.disabled = True
         self._breakpoint_type = ToggleButtons(
             options=["Line", "Function", "Conditional"], value="Line"
@@ -147,10 +150,14 @@ class GUI(object):
         self._breakpoint_type.observe(
             self._handle_breakpoint_type, names="value"
         )
-        self._condition_input = Text(placeholder="Enter condition")
+        self._condition_input = Text(
+            placeholder="Enter condition", layout=Layout(width="200px")
+        )
         self._condition_input.disabled = True
         self._line_input = Text(
-            placeholder="Enter line to break at", name="line_input"
+            placeholder="Line Number",
+            name="line_input",
+            layout=Layout(width="100px"),
         )
 
         self._search_query_type_dropdown = Dropdown(
@@ -184,10 +191,10 @@ class GUI(object):
 
         self._buttons = HBox(
             [
-                VBox(self.get_buttons("backstep", "step")),
-                VBox(self.get_buttons("previous", "next")),
-                VBox(self.get_buttons("start", "finish")),
-                VBox(self.get_buttons("continue", "reverse")),
+                HBox(self.get_buttons("backstep", "step")),
+                HBox(self.get_buttons("previous", "next")),
+                HBox(self.get_buttons("start", "finish")),
+                HBox(self.get_buttons("reverse", "continue")),
             ]
         )
 
@@ -204,8 +211,8 @@ class GUI(object):
         self._layout[4, :3] = HBox(
             [self._autoplay, self._speed_slider, self._reverse_autoplay]
         )
-        self._layout[4:5, 3] = VBox(
-            [self._watchpoint_input, self._add_watchpoint]
+        self._layout[4, 3] = HBox(
+            [self._add_watchpoint, self._watchpoint_input]
         )
         self._layout[6, :] = HBox(
             [
@@ -236,7 +243,7 @@ class GUI(object):
         return [self._BUTTONS[key]["button"] for key in keys]
 
     def register_button(self, key, **kwargs):
-        button = Button(**kwargs)
+        button = Button(description="", layout=Layout(width="40px"), **kwargs)
         func = getattr(self, key + "_command")
         button.on_click(func)
         self._BUTTONS[key]["button"] = button
@@ -503,11 +510,23 @@ class GUI(object):
         self._line_input.disabled = change["new"] == "Function"
 
     def _handle_search_input(self, change):
-        events = self._debugger.search(
-            self._search_query_type_dropdown.value, change["new"]
-        )
+        try:
+            events = self._debugger.search(
+                self._search_query_type_dropdown.value, change["new"]
+            )
+        except:
+            pass
+
         with self._search_results:
             clear_output()
-            print(self._search_query_type_dropdown.value)
-            print(change["new"])
-            print(events)
+            for event in events:
+                goto = Button(
+                    icon="angle-right",
+                    layout=Layout(width="30px", height="30px"),
+                )
+                goto.on_click(
+                    lambda change: self._debugger.step_to_index(
+                        event.exec_point, ignore_breakpoints=True
+                    )
+                )
+                display(HBox([goto, Label(value=str(event))]))
