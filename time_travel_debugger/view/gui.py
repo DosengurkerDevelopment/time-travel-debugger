@@ -85,6 +85,8 @@ class GUI(object):
         self._watchpoint_output = Output()
         self._breakpoint_output = Output()
 
+        display(self._breakpoint_output)
+
         self._diff_slider = IntSlider(
             min=1,
             readout=False,
@@ -311,6 +313,7 @@ class GUI(object):
                 continue
             if bp.breakpoint_type != BPType.FUNC:
                 elem = doc.get_element_by_id(f"True-{bp.lineno}", None)
+                print(bp.lineno)
                 if bp.lineno == display_current_line:
                     current_line_breakpoint = True
                 if elem is not None:
@@ -463,6 +466,8 @@ class GUI(object):
             self._debugger.add_breakpoint(lineno=line)
         if type == "Conditional":
             self._debugger.add_breakpoint(lineno=line, cond=condition)
+
+        print(self._debugger.breakpoints)
 
         self.update()
 

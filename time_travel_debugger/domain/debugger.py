@@ -556,9 +556,8 @@ class TimeTravelDebugger(object):
 
             # Find the code object corresponding to this line number and
             # filename
-            source = self.find_source_for_location(
-                filename or self.curr_diff.file_name, lineno
-            )
+            filename = self.curr_diff.file_name
+            source = self.find_source_for_location(filename, lineno)
             lineno = self.find_next_executable_line(lineno, source)
 
             breakpoint = Breakpoint(id, lineno, filename, cond)
