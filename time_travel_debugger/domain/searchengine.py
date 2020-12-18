@@ -82,14 +82,17 @@ class SearchEngine(TimeTravelDebugger):
             func = self.curr_diff.func_name
             if ids := self._check_breakpoint_hit() :
                 for id in ids:
-                    event = Event(EventType.BREAK_HIT,id,line,func,file)
+                    event = Event(EventType.BREAK_HIT\
+                            ,id,line,func,file,self._state_machine._exec_point)
                     self._break_hit_events.append(event)
             if var_names := self._check_var_changes():
                 for var_name in var_names:
-                    event = Event(EventType.VAR_CHANGE,var_name,line,func,file)
+                    event = Event(EventType.VAR_CHANGE\
+                            ,var_name,line,func,file,self._state_machine._exec_point)
                     self._var_change_events.append(event)
             if func_name := self._check_func_call():
-                event = Event(EventType.FUNC_CALL,func_name,line,func,file)
+                event = Event(EventType.FUNC_CALL\
+                        ,func_name,line,func,file,self._state_machine._exec_point)
                 self._func_call_events.append(event)
 
 
