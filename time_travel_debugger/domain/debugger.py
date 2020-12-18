@@ -340,6 +340,13 @@ class TimeTravelDebugger(object):
                 return True
         return False
 
+    def get_ids_of_current_breaks(self):
+        res = []
+        for bp in self.breakpoints:
+            if self.is_at_breakpoint(bp) and bp.active:
+                res.append(bp.id)
+        return res
+
     def is_line_breakpoint(self, line, filename=None):
         filename = filename or self.curr_diff.file_name
         source = self.find_source_for_location(filename, line)

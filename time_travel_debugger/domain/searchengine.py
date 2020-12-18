@@ -43,6 +43,7 @@ class SearchEngine(TimeTravelDebugger):
         # update shouldnt do anything
         self._update = lambda : None
 
+
     def _parse_search_query(self, query):
         """ parses the search criteria for a query """
         ids = []
@@ -84,6 +85,7 @@ class SearchEngine(TimeTravelDebugger):
         #  print(f"results:{results}")
         return results
 
+
     def init(self, diffs, breakpoints, watchpoints):
         """ reset the state of the program, run it once and record all events """
         # initialize an own state machine
@@ -95,9 +97,10 @@ class SearchEngine(TimeTravelDebugger):
             line = self.curr_line
             file = self.curr_diff.file_name
             func = self.curr_diff.func_name
-            if id := self._check_breakpoint_hit() :
-                event = Event(EventType.BREAK_HIT,id,line,func,file)
-                self._break_hit_events.append(event)
+            if ids := self._check_breakpoint_hit() :
+                for id in ids:
+                    event = Event(EventType.BREAK_HIT,id,line,func,file)
+                    self._break_hit_events.append(event)
             if var_names := self._check_var_changes():
                 for var_name in var_names:
                     event = Event(EventType.VAR_CHANGE,var_name,line,func,file)
@@ -109,12 +112,13 @@ class SearchEngine(TimeTravelDebugger):
 
             self._state_machine.forward()
         #  print(f"var_change_events: {self._var_change_events}")
+        #  print(f"func_call_events: {self._func_call_events}")
+        #  print(f"break_hit_event: {self._break_hit_events}")
 
 
     def _check_breakpoint_hit(self):
         """ check if breakpoint got hit and if return its id """
-        # TODO:
-        return 1
+        return self.get_ids_of_current_breaks()
 
     def _check_var_changes(self):
         """ check if a variable changed """
