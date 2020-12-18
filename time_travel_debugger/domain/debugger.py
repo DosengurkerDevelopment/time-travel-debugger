@@ -442,7 +442,7 @@ class TimeTravelDebugger(object):
             self._state_machine.backward()
 
     @trigger_update
-    def until(self, line_no=0, file_name="", direction=Direction.FORWARD):
+    def until(self, line_no=0, file_name="", func=False, direction=Direction.FORWARD):
         func_name = self.curr_diff.func_name
         if line_no:
             target = line_no
@@ -493,6 +493,11 @@ class TimeTravelDebugger(object):
                 else:
                     break
             move()
+
+        # if we searched for a function we stepped to the first line of the
+        # function, but we wanted to go to its call
+        if func:
+            self._state_machine.backward()
 
     def get_callstack_safe_bounds(self, _min, _max):
         """ get callstack with safe min and max bounds """
