@@ -343,11 +343,12 @@ class TimeTravelCLI(object):
             return {"line_no": int(arg)}
         elif ":" not in arg:
             # Function name
+            func = True
             try:
-                line_no = int(source_map[arg]["start"])
+                line_no = int(source_map[arg]["start"]) + 1
             except KeyError:
                 return "No such function!"
-            return {"line_no": line_no}
+            return {"line_no": line_no, "func":func}
         else:
             # we have either <filename>:<line_number>
             # or <filename>:<function_name>
@@ -356,8 +357,9 @@ class TimeTravelCLI(object):
                 line_no = int(line_or_func)
             else:
                 #  parse func name to its starting line
+                func = True
                 try:
-                    line_no = int(source_map[line_or_func]["start"])
+                    line_no = int(source_map[line_or_func]["start"]) + 1
                 except KeyError:
                     return "No such function!"
                 #  parse func name to its starting line
@@ -366,7 +368,7 @@ class TimeTravelCLI(object):
             for key, value in source_map.items():
                 if os.path.basename(value["filename"]) == file_name:
                     file_name = value["filename"]
-            return {"file_name": file_name, "line_no": line_no}
+            return {"file_name": file_name, "line_no": line_no, "func":func}
 
     def until_command(self, arg=""):
         """ Execute forward until a given point """
