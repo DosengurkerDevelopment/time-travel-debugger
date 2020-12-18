@@ -34,12 +34,15 @@ class SearchEngine(TimeTravelDebugger):
         query = query.replace('"','')
         query = query.replace("'",'')
 
-        phrases = query.split(',')
+        phrases = query.split('-')
         for phrase in phrases:
-            if phrase.startswith("line:"):
-                line_nums.append(phrase.replace("line:",''))
-            elif phrase.startswith("func:"):
-                func_names.append(phrase.replace("func:",''))
+            phrase = phrase.strip()
+            if phrase.startswith("line"):
+                line_no = phrase.split("line")[-1]
+                line_nums.append(line_no.strip())
+            elif phrase.startswith("func"):
+                func_name = phrase.split("func")[-1]
+                func_names.append(func_name.strip())
             else:
                 id = phrase
                 ids.append(id)
@@ -50,6 +53,7 @@ class SearchEngine(TimeTravelDebugger):
     def search_events(self, event_type:EventType, query):
         """ search for events of a specific type in the programm execution """
         ids, func_names, line_nums = self._parse_search_query(query)
+        #  print(ids, func_names, line_nums)
         results = []
         search_list = []
         if event_type == EventType.VAR_CHANGE:
@@ -59,11 +63,10 @@ class SearchEngine(TimeTravelDebugger):
         elif event_type == EventType.FUNC_CALL:
             search_list = self._func_call_events
         for event in search_list:
-            if event.id in ids:
-                results.append(event)
-            if event.line in line_nums:
-                results.append(event)
-            if event.func in func_names:
+            id_crit = event.id in ids if ids else True
+            line_crit = event.line in line_nums if line_nums else True
+            func_crit = event.func in func_names if func_names else True
+            if id_crit and line_crit and func_crit:
                 results.append(event)
             #  not supported yet
             #  if event.file in ids:

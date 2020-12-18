@@ -511,9 +511,9 @@ class GUI(object):
 
     def _handle_search_input(self, change):
         try:
-            events = self._debugger.search(
-                self._search_query_type_dropdown.value, change["new"]
-            )
+            input = change["new"]
+            event_type, query = input.split(":",1)
+            events = self._debugger.search(event_type, query)
         except:
             pass
 

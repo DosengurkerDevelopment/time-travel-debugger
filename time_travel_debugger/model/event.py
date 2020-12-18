@@ -3,9 +3,9 @@ import os
 
 
 class EventType(Enum):
-    VAR_CHANGE = "var_change"
-    FUNC_CALL = "func_call"
-    BREAK_HIT = "break_hit"
+    VAR_CHANGE = "var"
+    FUNC_CALL = "call"
+    BREAK_HIT = "hit"
 
 
 class Event(object):
