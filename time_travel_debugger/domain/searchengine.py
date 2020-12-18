@@ -41,7 +41,7 @@ class SearchEngine(TimeTravelDebugger):
                 line_nums.append(phrase.replace("line ",''))
             else:
                 func_names.append(phrase)
-        print ( ids, func_names, line_nums )
+        #  print ( ids, func_names, line_nums )
         return ids, func_names, line_nums
 
     def search_events(self, event_type:EventType, query):
@@ -83,36 +83,37 @@ class SearchEngine(TimeTravelDebugger):
             if ids := self._check_breakpoint_hit() :
                 for id in ids:
                     event = Event(EventType.BREAK_HIT\
-                            ,id,line,func,file,self._state_machine._exec_point)
+                            ,id,str(line),func,file,self._state_machine._exec_point)
                     self._break_hit_events.append(event)
             if var_names := self._check_var_changes():
                 for var_name in var_names:
                     event = Event(EventType.VAR_CHANGE\
-                            ,var_name,line,func,file,self._state_machine._exec_point)
+                            ,var_name,str(line),func,file,self._state_machine._exec_point)
                     self._var_change_events.append(event)
             if func_name := self._check_func_call():
                 event = Event(EventType.FUNC_CALL\
-                        ,func_name,line,func,file,self._state_machine._exec_point)
+                        ,func_name,str(line),func,file,self._state_machine._exec_point)
                 self._func_call_events.append(event)
 
 
             self._state_machine.forward()
         #  print(f"var_change_events: {self._var_change_events}")
         #  print(f"func_call_events: {self._func_call_events}")
-        print(f"break_hit_event: {self._break_hit_events}")
+        #  print(f"break_hit_event: {self._break_hit_events}")
 
 
     def _check_breakpoint_hit(self):
-        """ check if breakpoint got hit and if return its id """
+        """ return breakpoint ids that got hit at the current diff """
         return self.get_ids_of_current_breaks()
 
     def _check_var_changes(self):
-        """ check if a variable changed """
-        return self.curr_diff.changed.keys()
+        """ return variables that changed for the current diff """
+        return [ str(x) for x in self.next_diff.changed.keys() ]
 
     def _check_func_call(self):
-        """ check if a function got called """
+        """ check if a function got called at the current exec point and return
+        the functions name if so """
         if self.curr_diff.action == Action.CALL:
-            return self.curr_diff.func_name 
+            return self.next_diff.func_name 
         else:
             return None

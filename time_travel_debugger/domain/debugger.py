@@ -266,6 +266,9 @@ class TimeTravelDebugger(object):
         # search enginge
         self._search_engine = search_engine
 
+        # needed to check if we  need to reset the search engine
+        self._last_break_points  = []
+
         self._update = update
 
     def trigger_update(func):
@@ -345,7 +348,7 @@ class TimeTravelDebugger(object):
         res = []
         for bp in self.breakpoints:
             if self.is_at_breakpoint(bp) and bp.active:
-                res.append(bp.id)
+                res.append(str(bp.id))
         return res
 
     def is_line_breakpoint(self, line, filename=None):
@@ -469,8 +472,10 @@ class TimeTravelDebugger(object):
 
     def search(self, event_type, query):
         event_type = EventType(event_type)
-        if self._last_search_exec_point != self._state_machine._exec_point:
+        if self._last_search_exec_point != self._state_machine._exec_point or \
+                self._last_break_points != self._breakpoints:
             self._last_search_exec_point = self._state_machine._exec_point
+            self._last_break_points = deepcopy(self._breakpoints)
             self._search_engine.init(\
                     self._state_machine._exec_state_diffs, self._breakpoints, self._watchpoints)
         return self._search_engine.search_events(event_type, query)

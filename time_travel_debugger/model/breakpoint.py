@@ -50,6 +50,9 @@ class BaseBreakpoint(object):
     def breakpoint_type(self):
         return self._type
 
+    def __eq__(self,bp):
+        return self.id == bp.id and self.active==bp.active
+
 
 class Breakpoint(BaseBreakpoint):
     """ Container class that holds one breakpoint and all its properties """
