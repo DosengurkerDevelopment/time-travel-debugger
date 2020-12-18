@@ -275,7 +275,7 @@ class TimeTravelCLI(object):
                 source_lines = code["code"]
                 line_number = code["start"]
             except Exception as err:
-                self.log(f"{err.__class__.__name__}: {err}")
+                self.log(f"No function named {arg}!")
                 return
             display_current_line = -1
 
@@ -339,6 +339,7 @@ class TimeTravelCLI(object):
         """
         # TODO: this should be outsourced to some util class or whatever, so we
         # can reuse it for the GUI
+        func = False
         if not arg:
             return {}
         elif arg.isnumeric():
@@ -351,7 +352,7 @@ class TimeTravelCLI(object):
                 line_no = int(source_map[arg]["start"]) + 1
             except KeyError:
                 return "No such function!"
-            return {"line_no": line_no, "func":func}
+            return {"line_no": line_no, "func": func}
         else:
             # we have either <filename>:<line_number>
             # or <filename>:<function_name>
@@ -371,7 +372,7 @@ class TimeTravelCLI(object):
             for key, value in source_map.items():
                 if os.path.basename(value["filename"]) == file_name:
                     file_name = value["filename"]
-            return {"file_name": file_name, "line_no": line_no, "func":func}
+            return {"file_name": file_name, "line_no": line_no, "func": func}
 
     def until_command(self, arg=""):
         """ Execute forward until a given point """
@@ -434,12 +435,10 @@ class TimeTravelCLI(object):
     def up_command(self, arg=""):
         """ Move up the call stack """
         call_stack = self._debugger.up()
-        self._print_callstack(call_stack)
 
     def down_command(self, arg=""):
         """ Move down the call stack """
         call_stack = self._debugger.down()
-        self._print_callstack(call_stack)
 
     def watch_command(self, arg=""):
         """ Insert a watchpoint """
@@ -487,7 +486,7 @@ class TimeTravelCLI(object):
 
     def breakpoints_command(self, arg=""):
         """ List all breakpoints """
-        table_template = "{:^15}|{:^6}|{:^20}|{:^15}|{:^20}"
+        table_template = "{:^15}|{:^6}|{:^25}|{:^15}|{:^20}"
         header = table_template.format(
             "id", "type", "location", "active", "condition"
         )
