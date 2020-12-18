@@ -30,17 +30,20 @@ class SearchEngine(TimeTravelDebugger):
         func_names = []
         line_nums = []
         
+        # remove any string delimiters
         query = query.replace('"','')
         query = query.replace("'",'')
+
         phrases = query.split(',')
         for phrase in phrases:
-            if phrase.startswith('#'):
-                id = phrase.replace('#','')
-                ids.append(id)
-            elif phrase.startswith("line "):
-                line_nums.append(phrase.replace("line ",''))
+            if phrase.startswith("line:"):
+                line_nums.append(phrase.replace("line:",''))
+            elif phrase.startswith("func:"):
+                func_names.append(phrase.replace("func:",''))
             else:
-                func_names.append(phrase)
+                id = phrase
+                ids.append(id)
+
         #  print ( ids, func_names, line_nums )
         return ids, func_names, line_nums
 
