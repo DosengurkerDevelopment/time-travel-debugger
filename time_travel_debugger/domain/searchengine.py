@@ -30,17 +30,20 @@ class SearchEngine(TimeTravelDebugger):
         func_names = []
         line_nums = []
         
+        # remove any string delimiters
         query = query.replace('"','')
         query = query.replace("'",'')
+
         phrases = query.split(',')
         for phrase in phrases:
-            if phrase.startswith('#'):
-                id = phrase.replace('#','')
-                ids.append(id)
-            elif phrase.startswith("line "):
-                line_nums.append(phrase.replace("line ",''))
+            if phrase.startswith("line:"):
+                line_nums.append(phrase.replace("line:",''))
+            elif phrase.startswith("func:"):
+                func_names.append(phrase.replace("func:",''))
             else:
-                func_names.append(phrase)
+                id = phrase
+                ids.append(id)
+
         #  print ( ids, func_names, line_nums )
         return ids, func_names, line_nums
 
@@ -80,17 +83,20 @@ class SearchEngine(TimeTravelDebugger):
             line = self.curr_line
             file = self.curr_diff.file_name
             func = self.curr_diff.func_name
-            if ids := self._check_breakpoint_hit() :
+            ids = self._check_breakpoint_hit()
+            if ids:
                 for id in ids:
                     event = Event(EventType.BREAK_HIT\
                             ,id,str(line),func,file,self._state_machine._exec_point)
                     self._break_hit_events.append(event)
-            if var_names := self._check_var_changes():
+            var_names = self._check_var_changes()
+            if var_names :
                 for var_name in var_names:
                     event = Event(EventType.VAR_CHANGE\
                             ,var_name,str(line),func,file,self._state_machine._exec_point)
                     self._var_change_events.append(event)
-            if func_name := self._check_func_call():
+            func_name = self._check_func_call()
+            if func_name:
                 event = Event(EventType.FUNC_CALL\
                         ,func_name,str(line),func,file,self._state_machine._exec_point)
                 self._func_call_events.append(event)
