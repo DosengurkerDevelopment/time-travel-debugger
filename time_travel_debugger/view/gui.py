@@ -503,11 +503,18 @@ class GUI(object):
         self._line_input.disabled = change["new"] == "Function"
 
     def _handle_search_input(self, change):
-        events = self._debugger.search(
-            self._search_query_type_dropdown.value, change["new"]
-        )
+        try:
+            events = self._debugger.search(
+                self._search_query_type_dropdown.value, change["new"]
+            )
+        except:
+            pass
+
         with self._search_results:
             clear_output()
-            print(self._search_query_type_dropdown.value)
-            print(change["new"])
-            print(events)
+            for event in events:
+                goto = Button(
+                    icon="angle-right",
+                    layout=Layout(width="20px", height="20px"),
+                )
+                display(goto)
