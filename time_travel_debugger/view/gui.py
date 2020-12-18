@@ -266,7 +266,7 @@ class GUI(object):
                 self._breakpoint_layout,
                 self._search_layout,
             ],
-            layout=Layout(height="900px"),
+            layout=Layout(height="650px"),
         )
 
         self._main_layout.set_title(0, "Code")
