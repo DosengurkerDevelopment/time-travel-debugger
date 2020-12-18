@@ -326,9 +326,9 @@ class GUI(object):
             else:
                 elem.set("class", "hit")
 
-        for elem in doc.cssselect("code > span"):
-            ln = elem.attrib["id"].removeprefix("True-")
-            elem.set("onclick", f"alert({ln})")
+        # for elem in doc.cssselect("code > span"):
+        #     ln = elem.attrib["id"].split("-")[1]
+        #     elem.set("onclick", f"alert({ln})")
 
         coloured = html.tostring(doc).decode("utf-8").strip()
 
