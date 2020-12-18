@@ -68,6 +68,7 @@ class SearchEngine(TimeTravelDebugger):
         """ search for events of a specific type in the programm execution """
         ids, func_names, line_nums = self._parse_search_query(query)
         results = []
+        search_list = []
         if event_type == EventType.VAR_CHANGE:
             search_list = self._var_change_events
         elif event_type == EventType.BREAK_HIT:
