@@ -23,6 +23,7 @@ from pygments import formatters, highlight, lexers
 
 from ..domain.debugger import TimeTravelDebugger
 from ..domain.tracer import TimeTravelTracer
+from ..domain.searchengine import SearchEngine
 from ..model.breakpoint import BPType
 
 here = os.path.dirname(__file__)
@@ -209,7 +210,9 @@ class GUI(object):
 
     def __exit__(self, *args, **kwargs):
         diffs, source_map = self._tracer.get_trace()
-        self._debugger = TimeTravelDebugger(diffs, source_map, self.update)
+        search_engine = SearchEngine()
+        self._debugger = TimeTravelDebugger(diffs, source_map, self.update,
+                search_engine)
         self._debugger.start_debugger()
         self._diff_slider.max = len(diffs) - 1
         self._function_dropdown.options = self._debugger.source_map.keys()

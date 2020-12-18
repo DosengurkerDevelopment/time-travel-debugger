@@ -120,6 +120,9 @@ class StateMachine(object):
         # True if we are the end of the current frame
         self._at_end = False
         self._direction = Direction.FORWARD
+        # to remember where we performed search last time, so we don't compute
+        # it unnessecary often
+        self._last_search_exec_point = -1
 
     def forward(self):
         """steps one step forward if possible and computes the current state"""
@@ -242,7 +245,11 @@ class StateMachine(object):
 
 class TimeTravelDebugger(object):
     def __init__(
-        self, exec_state_diffs: List[ExecStateDiff], source_map, update
+        self, 
+        exec_state_diffs: List[ExecStateDiff], 
+        source_map, 
+        update,
+        search_engine
     ):
         # Dictionary that contains source code objects for each frame
         self._source_map = source_map
@@ -254,6 +261,9 @@ class TimeTravelDebugger(object):
         self._call_stack_depth = 0
         # que of lines in callstack, after moving down the callstack
         self._call_stack_return_lines = []
+
+        # search enginge
+        self._search_engine = search_engine
 
         self._update = update
 
@@ -275,6 +285,14 @@ class TimeTravelDebugger(object):
             return ret
 
         return nfunc
+
+    @property
+    def _last_search_exec_point(self):
+        return self._state_machine._last_search_exec_point
+
+    @_last_search_exec_point.setter
+    def _last_search_exec_point(self, last_search_exec_point):
+        self._state_machine._last_search_exec_point = last_search_exec_point
 
     @property
     def source_map(self):
@@ -440,6 +458,13 @@ class TimeTravelDebugger(object):
         self._state_machine.backward()
         while not (self.break_at_current() or self._state_machine.at_start):
             self._state_machine.backward()
+
+    def search(self, event_type, query):
+        if self._last_search_exec_point != self._state_machine._exec_point:
+            self._last_search_exec_point = self._state_machine._exec_point
+            self._search_engine.init(\
+                    self._state_machine._exec_state_diffs, self._breakpoints, self._watchpoints)
+        return self._search_engine.search_events(event_type, query)
 
     @trigger_update
     def until(self, line_no=0, file_name="", func=False, direction=Direction.FORWARD):

@@ -12,6 +12,7 @@ from pygments import formatters, highlight, lexers, styles
 
 from ..domain.debugger import TimeTravelDebugger, Direction
 from ..domain.tracer import TimeTravelTracer
+from ..domain.searchengine import SearchEngine, EventType
 from ..model.exec_state_diff import Action
 from .completer import CLICompleter
 
@@ -64,7 +65,9 @@ class TimeTravelCLI(object):
         self._completer = CLICompleter(self.commands())
         readline.set_completer(self._completer.complete)
         readline.parse_and_bind("tab: complete")
-        self._debugger = TimeTravelDebugger(diffs, source_map, self.update)
+        search_engine = SearchEngine()
+        self._debugger = TimeTravelDebugger(diffs, source_map, self.update,
+            search_engine)
         self._debugger.step_forward()
         self.execute()
 
@@ -393,6 +396,28 @@ class TimeTravelCLI(object):
     def reverse_command(self, arg=""):
         """ Continue execution backward until a breakpoint is hit """
         self._debugger.reverse()
+
+    def search_command(self, arg=""):
+        """ {event_type query} - Search for specific events, like variable changes and breakpoint hits """
+        if arg:
+            try:
+                event_type, query = arg.split(" ")
+                try:
+                    event_type = EventType(event_type)
+                except Exception as err:
+                    print("No such event type! Available event types are:")
+                    pprint([t.value for t in EventType])
+                    return 
+
+                try:
+                    results = self._debugger.search(event_type,query)
+                    pprint(results)
+                except Exception as err:
+                    print(err)
+
+            except ValueError:
+                print("Wrong number of arguments!")
+
 
     def _print_callstack(self, stack):
         for (frame, (func, file)) in reversed(list(enumerate(stack, start=1))):
